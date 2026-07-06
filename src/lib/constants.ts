@@ -29,6 +29,13 @@ export const GAME = {
   PLAY_COINS_SUCCESS: 10,
   PLAY_COINS_FAIL: 2,
   EVOLUTION_COIN_REWARD: 25,
+  // Pet/Stroke (free low-impact flavor action)
+  PET_MOOD_GAIN: 3,
+  PET_SYNC_GAIN: 1,
+  PET_FATIGUE_GAIN: 5,
+  PET_COOLDOWN_MS: 30 * 1000, // 30s cooldown to prevent spam
+  // Daily buff claim
+  DAILY_CLAIM_COIN_REWARD: 15,
 } as const;
 
 export function clamp(v: number, min = GAME.MIN_STAT, max = GAME.MAX_STAT): number {

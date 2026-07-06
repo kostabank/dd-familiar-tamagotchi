@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { SPECIES_INFO, STATE_INFO } from '@/lib/constants';
 import type { AdminFamiliarRow, FamiliarDTO } from '@/lib/types';
 import { CloudLightning, PartyPopper, LogOut, RefreshCw, Users } from 'lucide-react';
+import { LiveClock } from './LiveClock';
+import { AmbientBackground } from './AmbientBackground';
 
 export function AdminPanel() {
   const { doLogout } = useAuth();
@@ -88,6 +90,7 @@ export function AdminPanel() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <AmbientBackground />
       <header className="border-b border-arcane/15 bg-card/40 backdrop-blur sticky top-0 z-20">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -100,6 +103,7 @@ export function AdminPanel() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <LiveClock />
             <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Обновить
             </Button>

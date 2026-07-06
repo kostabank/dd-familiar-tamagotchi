@@ -2,10 +2,11 @@
 
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Environment, ContactShadows, OrbitControls } from '@react-three/drei';
+import { Environment, ContactShadows, OrbitControls, Sparkles } from '@react-three/drei';
 import type { Species, FamiliarState, ModelConfig } from '@/lib/types';
 import FamiliarModel from './models/FamiliarModel';
 import EvolutionAnimation from './EvolutionAnimation';
+import HeartBurst from './HeartBurst';
 
 interface Props {
   species: Species;
@@ -14,6 +15,8 @@ interface Props {
   modelConfigOverride?: Partial<ModelConfig>;
   evolving?: boolean;
   onEvolutionComplete?: () => void;
+  /** Increment to trigger a heart-particle burst (pet action). */
+  petTrigger?: number;
 }
 
 // Used to tint the evolution flash if no override supplied.
@@ -35,6 +38,7 @@ export default function FamiliarCanvas({
   modelConfigOverride,
   evolving = false,
   onEvolutionComplete,
+  petTrigger = 0,
 }: Props) {
   const flashColor = modelConfigOverride?.emissiveColor ?? SPECIES_EMISSIVE[species];
 
@@ -61,6 +65,9 @@ export default function FamiliarCanvas({
       />
       <pointLight position={[-5, 3, -5]} intensity={0.6} color="#A855F7" />
 
+      {/* Ambient drifting sparkle dust for atmosphere */}
+      <Sparkles count={40} scale={[6, 4, 6]} size={2} speed={0.2} opacity={0.4} color="#A855F7" />
+
       <Suspense fallback={null}>
         <FamiliarModel
           species={species}
@@ -68,6 +75,8 @@ export default function FamiliarCanvas({
           state={state}
           modelConfigOverride={modelConfigOverride}
         />
+
+        <HeartBurst trigger={petTrigger} />
 
         {evolving && (
           <EvolutionAnimation

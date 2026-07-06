@@ -80,6 +80,12 @@ export interface BuffSummary {
   individualBuff: string | null;
   debuff: string | null;
   partyResonance: PartyResonance | null;
+  dailyClaim: {
+    claimedToday: boolean;
+    lastClaimMsk: string | null;
+    claimCount: number;
+    nextClaimAt: string | null; // ISO when the next Moscow day starts
+  } | null;
 }
 
 export interface ApiError {

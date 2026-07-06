@@ -152,3 +152,74 @@ Stage Summary:
   9. Responsive dark-fantasy UI (desktop horizontal 60/40, mobile stacked), sticky footer.
 - Services running: Next.js dev on :3000, familiar-service on :3003.
 - DM demo account: dm / dmdnd123. Player registration self-service.
+
+---
+Task ID: 11 (QA + Feature Round 1)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, add new features (daily buff, pet action, activity log, party roster, styling polish).
+
+## Current Project Status (assessment)
+- Project was fully functional from previous round: 4 species 3D, server-time decay (MSK), blind evolution, mini-game, DM panel, Socket.io realtime.
+- Both services were DOWN on arrival (Next.js dev killed, familiar-service up). Restarted Next.js dev.
+- QA via agent-browser confirmed auth, login, dashboard all working. No browser/console/runtime errors.
+- Existing player "raven" (Stage 2 dragon "Изумрудный") intact from previous round; hourly cron had correctly run at 23:00 MSK.
+
+## Completed Modifications (this round)
+
+### 1. Daily Buff Claim (new feature)
+- **DB:** Added `DailyBuffClaim` model (userId unique, lastClaimMsk 'yyyy-MM-dd', claimCount). Pushed schema + regenerated Prisma client.
+- **Lib:** `todayMoscowDate()`, `getDailyClaimStatus(userId)`, `recordDailyClaim(userId)` in familiar-logic.ts. Extended `BuffSummary` type with `dailyClaim { claimedToday, lastClaimMsk, claimCount, nextClaimAt }`. `computeBuffs()` now includes daily-claim status + next-claim-at (start of next MSK day).
+- **API:** `POST /api/familiar/claim-buff` (once per MSK day, +15 coins, +10 mood, logs 'claim_buff'), `GET /api/familiar/claim-buff` (status check).
+- **UI:** `DailyBuffPanel.tsx` — dice-roll animation (cycles ⚀-⚅ for 1s), then claims. Shows current stage buff, claim count, next-claim time (00:00 MSK), "Получено сегодня" disabled state.
+
+### 2. Pet/Stroke Action (new feature)
+- **Constants:** PET_MOOD_GAIN=3, PET_SYNC_GAIN=1, PET_FATIGUE_GAIN=5, PET_COOLDOWN_MS=30s.
+- **API:** `POST /api/familiar/pet` — gentle action bypassing fatigue>80 block, 30s cooldown enforced via last-log lookup, returns 429 with countdown if on cooldown.
+- **3D:** `HeartBurst.tsx` — 10 glowing pink octahedrons burst upward + fade when `trigger` prop increments. Wired into `FamiliarCanvas` via new `petTrigger` prop + ambient `Sparkles` dust added to canvas.
+- **UI:** "Погладить" button (pink) in ActionButtons; triggers `triggerPetEffect()` in store → HeartBurst in 3D.
+
+### 3. Activity Log (new feature)
+- **Lib:** `getRecentLogs(familiarId, limit=15)` in familiar-logic.ts.
+- **API:** `GET /api/familiar/logs` — recent 15 interactions.
+- **UI:** `ActivityLogPanel.tsx` — scrollable list with per-action icons (Utensils/Gamepad2/Heart/Moon/Sun/Sparkles/Gift/CloudLightning/Wrench), relative timestamps ("2м назад"), auto-refresh every 20s + on familiar change.
+
+### 4. Party Roster Sidebar (new feature)
+- **Lib:** `getPartyRoster()` in familiar-logic.ts — lightweight list of all players + species/stage/mood/energy/state.
+- **API:** `GET /api/party/roster` (any authenticated user).
+- **UI:** `PartyRosterSidebar.tsx` — desktop xl-only left column (sticky), shows each player with species badge, mini mood/energy bars, state indicator dot. Current user highlighted with "(вы)". Auto-refresh every 15s. Falls back to inline at bottom on mobile.
+
+### 5. Styling Polish
+- `AmbientBackground.tsx` — 14 floating colored orbs (purple/blue/green) with blur-3xl + subtle grid overlay, fixed -z-10 pointer-events-none. Added to both PlayerDashboard and AdminPanel.
+- `LiveClock.tsx` — real-time MSK clock (HH:MM:SS + weekday/day/month) via Intl.DateTimeFormat with timeZone='Europe/Moscow'. Added to both dashboards' headers.
+- PlayerDashboard layout: 3-column on xl (party sidebar | canvas+stats | action/buff/log panels), 2-column on lg, stacked on mobile. Stat bars now in a 2-col grid below canvas. "перетаскивай для вращения" hint overlay on canvas.
+- FamiliarCanvas: ambient `Sparkles` dust (40 particles, purple, slow drift) for atmosphere.
+
+### 6. Bug fix
+- BuffsPanel was showing "Среднее настроение: 0%" because it only used the socket-pushed partyResonance (which fires on socket connect/tick) and discarded the server-computed resonance from /api/familiar/buffs. Fixed: BuffsPanel now also stores the fetched resonance as a fallback via `setPartyResonance()`, and stores full buffs via `setBuffs()`. Now correctly shows "90% · +2 Temp HP в начале боя".
+
+## Verification (agent-browser, all passed)
+- Login as raven → dashboard renders with all new panels (Действия with Погладить, Бафф дня, Баффы, Хроника, Партия sidebar on desktop).
+- Daily buff claim: dice-roll animation (1s) → "Получено сегодня" disabled, buff text "+1d4 к атаке", next-claim "00:00 МСК", claim count 1. Coins +15. ✓
+- Pet action: click → heart-particle burst in 3D, mood +3 (capped at 100), logged as "Ласка · +3 mood". 30s cooldown verified via API (429 with countdown). ✓
+- Activity log: shows Ласка, Бафф дня #1, Проснулся, Эволюция 1->2, Правка Мастера, Уснул, Игра — all with relative timestamps. ✓
+- Party roster: registered 2nd player "thorn" (construct) → sidebar shows both players with mini bars + state dots, "(вы)" on current. Resonance now "90% · +2 Temp HP". ✓
+- Live clock: shows "23:53:51 · ПН, 06 ИЮЛ. · МСК", updates every second. ✓
+- Ambient background: visible (orbs + grid), no pointer interference. ✓
+- No browser errors, no console errors, no dev-log errors, no service-log errors.
+- Lint: 0 errors, 0 warnings.
+
+## Unresolved Issues / Risks
+- **Mobile swipe-up inventory drawer** (todo #5) deferred — the current mobile layout already stacks all panels vertically with the party roster at the bottom, which is functional. A dedicated swipe-up drawer would be a nice UX enhancement for a future round.
+- The `editing` state in AdminPanel is unused (pre-existing, harmless).
+- Three.js deprecation warnings (THREE.Clock, PCFSoftShadowMap) are benign and come from upstream drei/r3f.
+
+## Next-Phase Priority Recommendations
+1. Mobile swipe-up inventory drawer (vaul-based) for better mobile UX.
+2. Sound effects / ambient audio toggle for actions (feed/play/pet/evolve).
+3. Achievements/milestones system (e.g., "first evolution", "7-day streak", "100 coins").
+4. Familiar "thoughts" / speech bubbles that react to current state (e.g., "Хочу есть!" when hungry).
+5. Trading/gifting between players (spend coins to send a mood boost to a party member).
+6. DM "quest" system — DM can assign a daily quest that grants sync on completion.
+
+Stage Summary:
+- 4 new features added (daily buff claim, pet action, activity log, party roster) + styling polish (ambient bg, live clock, 3-col desktop layout, sparkle dust) + 1 bug fix (BuffsPanel resonance). All browser-verified, lint-clean, no errors. Services running on :3000 and :3003.

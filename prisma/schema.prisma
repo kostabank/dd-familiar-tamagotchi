@@ -20,6 +20,7 @@ model User {
 
   familiar       Familiar?
   interactionLogs InteractionLog[]
+  dailyClaims    DailyBuffClaim[]
 }
 
 model Familiar {
@@ -63,7 +64,17 @@ model InteractionLog {
   familiar    Familiar @relation(fields: [familiarId], references: [id], onDelete: Cascade)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  actionType  String   // 'feed' | 'play' | 'sleep' | 'wake' | 'evolve' | 'admin_edit' | 'event'
+  actionType  String   // 'feed' | 'play' | 'pet' | 'sleep' | 'wake' | 'evolve' | 'claim_buff' | 'admin_edit' | 'event'
   detail      String?
   timestamp   DateTime @default(now())
+}
+
+// Tracks once-per-day (Moscow day) buff claims per player.
+model DailyBuffClaim {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastClaimMsk String  // ISO date (yyyy-MM-dd) in Europe/Moscow when last claimed
+  claimCount  Int      @default(0)
+  updatedAt   DateTime @updatedAt
 }

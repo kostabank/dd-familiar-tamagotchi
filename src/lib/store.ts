@@ -1,5 +1,16 @@
 import { create } from 'zustand';
-import type { UserPublic, FamiliarDTO, BuffSummary, PartyResonance } from './types';
+import type { UserPublic, FamiliarDTO, BuffSummary, PartyResonance, InteractionLogDTO } from './types';
+
+export interface PartyRosterEntry {
+  username: string;
+  characterName: string | null;
+  species: string;
+  name: string;
+  stage: number;
+  mood: number;
+  energy: number;
+  state: string;
+}
 
 interface AppState {
   // Auth
@@ -11,11 +22,14 @@ interface AppState {
   // Realtime
   partyResonance: PartyResonance | null;
   buffs: BuffSummary | null;
+  partyRoster: PartyRosterEntry[];
 
   // UI
   evolving: boolean;
   showMiniGame: boolean;
   showEvolutionModal: boolean;
+  showInventory: boolean; // mobile swipe-up drawer
+  petEffect: number; // increments to trigger heart-particle burst in 3D
 
   // Actions
   setAuth: (user: UserPublic | null, familiar: FamiliarDTO | null) => void;
@@ -23,9 +37,12 @@ interface AppState {
   setFamiliar: (f: FamiliarDTO | null) => void;
   setPartyResonance: (r: PartyResonance | null) => void;
   setBuffs: (b: BuffSummary | null) => void;
+  setPartyRoster: (r: PartyRosterEntry[]) => void;
   setEvolving: (v: boolean) => void;
   setShowMiniGame: (v: boolean) => void;
   setShowEvolutionModal: (v: boolean) => void;
+  setShowInventory: (v: boolean) => void;
+  triggerPetEffect: () => void;
   logout: () => void;
 }
 
@@ -36,9 +53,12 @@ export const useStore = create<AppState>((set) => ({
   authed: false,
   partyResonance: null,
   buffs: null,
+  partyRoster: [],
   evolving: false,
   showMiniGame: false,
   showEvolutionModal: false,
+  showInventory: false,
+  petEffect: 0,
 
   setAuth: (user, familiar) =>
     set({ user, familiar, authed: !!user, authLoading: false }),
@@ -46,9 +66,12 @@ export const useStore = create<AppState>((set) => ({
   setFamiliar: (f) => set({ familiar: f }),
   setPartyResonance: (r) => set({ partyResonance: r }),
   setBuffs: (b) => set({ buffs: b }),
+  setPartyRoster: (r) => set({ partyRoster: r }),
   setEvolving: (v) => set({ evolving: v }),
   setShowMiniGame: (v) => set({ showMiniGame: v }),
   setShowEvolutionModal: (v) => set({ showEvolutionModal: v }),
+  setShowInventory: (v) => set({ showInventory: v }),
+  triggerPetEffect: () => set((s) => ({ petEffect: s.petEffect + 1 })),
   logout: () =>
     set({
       user: null,
@@ -57,5 +80,10 @@ export const useStore = create<AppState>((set) => ({
       authLoading: false,
       partyResonance: null,
       buffs: null,
+      partyRoster: [],
     }),
 }));
+
+// Re-export for convenience.
+export type { InteractionLogDTO };
+

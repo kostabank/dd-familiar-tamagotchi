@@ -15,6 +15,39 @@ export function toMoscowISO(date: Date | string): string {
   return dt.toISO()!;
 }
 
+/** Returns the current Moscow calendar day as 'yyyy-MM-dd'. */
+export function todayMoscowDate(): string {
+  return nowMoscow().toISODate();
+}
+
+/** Returns true if the player has already claimed their daily buff today (Moscow day). */
+export async function getDailyClaimStatus(userId: string): Promise<{ claimedToday: boolean; lastClaimMsk: string | null; claimCount: number }> {
+  const today = todayMoscowDate();
+  const row = await db.dailyBuffClaim.findUnique({ where: { userId } });
+  if (!row) return { claimedToday: false, lastClaimMsk: null, claimCount: 0 };
+  return {
+    claimedToday: row.lastClaimMsk === today,
+    lastClaimMsk: row.lastClaimMsk,
+    claimCount: row.claimCount,
+  };
+}
+
+/** Records a daily buff claim for the player (upserts the row). */
+export async function recordDailyClaim(userId: string): Promise<void> {
+  const today = todayMoscowDate();
+  const existing = await db.dailyBuffClaim.findUnique({ where: { userId } });
+  if (existing) {
+    await db.dailyBuffClaim.update({
+      where: { userId },
+      data: { lastClaimMsk: today, claimCount: { increment: 1 } },
+    });
+  } else {
+    await db.dailyBuffClaim.create({
+      data: { userId, lastClaimMsk: today, claimCount: 1 },
+    });
+  }
+}
+
 export function hoursBetweenMs(lastTick: Date | string): number {
   const last = typeof lastTick === 'string' ? DateTime.fromISO(lastTick, { zone: MOSCOW_ZONE }) : DateTime.fromJSDate(lastTick, { zone: MOSCOW_ZONE });
   const now = nowMoscow();
@@ -204,12 +237,57 @@ export async function computePartyResonance(): Promise<PartyResonance> {
 export async function computeBuffs(userId: string): Promise<BuffSummary> {
   const f = await db.familiar.findUnique({ where: { userId } });
   const resonance = await computePartyResonance();
+  const claim = await getDailyClaimStatus(userId);
+  // Compute next-claim-at: start of next Moscow day.
+  let nextClaimAt: string | null = null;
+  if (claim.claimedToday) {
+    nextClaimAt = nowMoscow().plus({ days: 1 }).startOf('day').toISO();
+  }
   if (!f) {
-    return { individualBuff: null, debuff: null, partyResonance: resonance };
+    return {
+      individualBuff: null,
+      debuff: null,
+      partyResonance: resonance,
+      dailyClaim: { ...claim, nextClaimAt },
+    };
   }
   return {
     individualBuff: describeIndividualBuff(f.stage, f.evolutionPath),
     debuff: describeDebuff(f.health),
     partyResonance: resonance,
+    dailyClaim: { ...claim, nextClaimAt },
   };
+}
+
+/** Returns the most recent N interaction logs for a familiar (newest first). */
+export async function getRecentLogs(familiarId: string, limit = 12): Promise<{ id: string; actionType: string; detail: string | null; timestamp: string }[]> {
+  const logs = await db.interactionLog.findMany({
+    where: { familiarId },
+    orderBy: { timestamp: 'desc' },
+    take: limit,
+  });
+  return logs.map((l) => ({
+    id: l.id,
+    actionType: l.actionType,
+    detail: l.detail,
+    timestamp: l.timestamp instanceof Date ? l.timestamp.toISOString() : l.timestamp,
+  }));
+}
+
+/** Returns a lightweight roster of all players + their familiars (for party sidebar). */
+export async function getPartyRoster(): Promise<{ username: string; characterName: string | null; species: string; name: string; stage: number; mood: number; energy: number; state: FamiliarState }[]> {
+  const rows = await db.familiar.findMany({
+    include: { user: { select: { username: true, characterName: true } } },
+    orderBy: { createdAt: 'asc' },
+  });
+  return rows.map((f) => ({
+    username: f.user.username,
+    characterName: f.user.characterName,
+    species: f.species,
+    name: f.name,
+    stage: f.stage,
+    mood: f.mood,
+    energy: f.energy,
+    state: deriveState(f),
+  }));
 }

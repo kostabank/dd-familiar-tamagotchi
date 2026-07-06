@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useStore } from '@/lib/store';
 import { GAME } from '@/lib/constants';
-import { Utensils, Gamepad2, Moon, Sun, Sparkles, Loader2 } from 'lucide-react';
+import { Utensils, Gamepad2, Moon, Sun, Sparkles, Loader2, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function ActionButtons() {
-  const { familiar, feed, sleep, wake, setShowMiniGame, fetchEvolutionOptions, evolve } = useFamiliar();
-  const { setShowEvolutionModal, setEvolving } = useStore();
+  const { familiar, feed, pet, sleep, wake, setShowMiniGame, fetchEvolutionOptions } = useFamiliar();
+  const { setShowEvolutionModal } = useStore();
 
   if (!familiar) return null;
 
@@ -41,13 +41,21 @@ export function ActionButtons() {
       >
         <Gamepad2 className="h-4 w-4" /> Играть
       </Button>
+      <Button
+        onClick={pet}
+        disabled={isSleeping}
+        className="bg-pink-500/80 hover:bg-pink-500 text-white font-semibold"
+        variant="secondary"
+      >
+        <Heart className="h-4 w-4" /> Погладить
+      </Button>
       {isSleeping ? (
-        <Button onClick={wake} className="col-span-2 bg-frost/90 hover:bg-frost text-white font-semibold" variant="secondary">
+        <Button onClick={wake} className="bg-frost/90 hover:bg-frost text-white font-semibold" variant="secondary">
           <Sun className="h-4 w-4" /> Разбудить
         </Button>
       ) : (
-        <Button onClick={sleep} className="col-span-2" variant="outline">
-          <Moon className="h-4 w-4" /> Уложить спать (4ч)
+        <Button onClick={sleep} variant="outline">
+          <Moon className="h-4 w-4" /> Усыпить
         </Button>
       )}
 

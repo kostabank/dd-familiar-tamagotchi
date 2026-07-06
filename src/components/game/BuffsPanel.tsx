@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useStore } from '@/lib/store';
+import type { BuffSummary } from '@/lib/types';
 import { Shield, Swords, Heart, Zap, Users } from 'lucide-react';
 
 export function BuffsPanel() {
-  const { familiar, partyResonance } = useStore();
-  const [buffs, setBuffs] = useState<{
+  const { familiar, partyResonance, setPartyResonance, setBuffs } = useStore();
+  const [localBuffs, setLocalBuffs] = useState<{
     individualBuff: string | null;
     debuff: string | null;
   } | null>(null);
@@ -16,9 +17,16 @@ export function BuffsPanel() {
   useEffect(() => {
     fetch('/api/familiar/buffs', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setBuffs(d))
+      .then((d: BuffSummary | null) => {
+        if (!d) return;
+        setLocalBuffs({ individualBuff: d.individualBuff, debuff: d.debuff });
+        setBuffs(d);
+        // Use the server-computed resonance as a fallback if the socket
+        // hasn't pushed one yet.
+        if (d.partyResonance) setPartyResonance(d.partyResonance);
+      })
       .catch(() => {});
-  }, [familiar?.stage, familiar?.evolutionPath, familiar?.health, partyResonance?.averageMood]);
+  }, [familiar?.stage, familiar?.evolutionPath, familiar?.health, familiar?.coins, setBuffs, setPartyResonance]);
 
   const resonanceBuff = partyResonance?.buff;
   const avg = partyResonance?.averageMood ?? 0;
@@ -34,13 +42,13 @@ export function BuffsPanel() {
         <BuffRow
           icon={<Zap className="h-4 w-4 text-arcane" />}
           label="Индивидуальный"
-          value={buffs?.individualBuff}
+          value={localBuffs?.individualBuff}
           tone="buff"
         />
         <BuffRow
           icon={<Heart className="h-4 w-4 text-red-400" />}
           label="Дебаф"
-          value={buffs?.debuff}
+          value={localBuffs?.debuff}
           tone="debuff"
         />
         <BuffRow
