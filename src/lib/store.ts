@@ -30,6 +30,7 @@ interface AppState {
   showEvolutionModal: boolean;
   showInventory: boolean; // mobile swipe-up drawer
   petEffect: number; // increments to trigger heart-particle burst in 3D
+  celebration: { id: number; emoji: string; label: string; color: string } | null;
 
   // Actions
   setAuth: (user: UserPublic | null, familiar: FamiliarDTO | null) => void;
@@ -43,6 +44,8 @@ interface AppState {
   setShowEvolutionModal: (v: boolean) => void;
   setShowInventory: (v: boolean) => void;
   triggerPetEffect: () => void;
+  triggerCelebration: (emoji: string, label: string, color: string) => void;
+  clearCelebration: () => void;
   logout: () => void;
 }
 
@@ -59,6 +62,7 @@ export const useStore = create<AppState>((set) => ({
   showEvolutionModal: false,
   showInventory: false,
   petEffect: 0,
+  celebration: null,
 
   setAuth: (user, familiar) =>
     set({ user, familiar, authed: !!user, authLoading: false }),
@@ -72,6 +76,9 @@ export const useStore = create<AppState>((set) => ({
   setShowEvolutionModal: (v) => set({ showEvolutionModal: v }),
   setShowInventory: (v) => set({ showInventory: v }),
   triggerPetEffect: () => set((s) => ({ petEffect: s.petEffect + 1 })),
+  triggerCelebration: (emoji, label, color) =>
+    set({ celebration: { id: Date.now(), emoji, label, color } }),
+  clearCelebration: () => set({ celebration: null }),
   logout: () =>
     set({
       user: null,

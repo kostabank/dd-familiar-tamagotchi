@@ -43,6 +43,7 @@ model Familiar {
   sleepStartedAt DateTime?
   lastTick       DateTime @default(now())
   coins          Int      @default(50)
+  accentColor    String?  // custom accent color (hex), unlockable after Stage 2
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

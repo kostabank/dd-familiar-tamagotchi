@@ -184,6 +184,7 @@ export function toFamiliarDTO(f: {
   sleepStartedAt: Date | string | null;
   lastTick: Date | string;
   coins: number;
+  accentColor?: string | null;
 }): FamiliarDTO {
   return {
     id: f.id,
@@ -202,6 +203,7 @@ export function toFamiliarDTO(f: {
     sleepStartedAt: f.sleepStartedAt ? (f.sleepStartedAt instanceof Date ? f.sleepStartedAt.toISOString() : f.sleepStartedAt) : null,
     lastTick: f.lastTick instanceof Date ? f.lastTick.toISOString() : f.lastTick,
     coins: f.coins,
+    accentColor: f.accentColor ?? null,
     state: deriveState(f),
   };
 }

@@ -18,6 +18,9 @@ import { AchievementsPanel } from './AchievementsPanel';
 import { QuestTrackerPanel } from './QuestTrackerPanel';
 import { LiveClock } from './LiveClock';
 import { AmbientBackground } from './AmbientBackground';
+import { SoundToggle } from './SoundToggle';
+import { CustomizePanel } from './CustomizePanel';
+import { CelebrationOverlay } from './CelebrationOverlay';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
@@ -26,7 +29,7 @@ import { SPECIES_INFO, STATE_INFO } from '@/lib/constants';
 import { Battery, Smile, BatteryLow, HeartPulse, Wifi, Coins, LogOut, Sparkles } from 'lucide-react';
 
 export function PlayerDashboard() {
-  const { user, familiar, partyResonance, evolving, petEffect } = useStore();
+  const { user, familiar, partyResonance, evolving, petEffect, celebration, clearCelebration } = useStore();
   const { doLogout: logout } = useAuth();
   useSocket();
   const fam = useStore((s) => s.familiar) ?? familiar;
@@ -41,6 +44,13 @@ export function PlayerDashboard() {
     }, 30000);
     return () => clearInterval(t);
   }, []);
+
+  // Auto-clear celebration overlay after 2.6s.
+  useEffect(() => {
+    if (!celebration) return;
+    const id = setTimeout(clearCelebration, 2600);
+    return () => clearTimeout(id);
+  }, [celebration, clearCelebration]);
 
   if (!user || !fam) return null;
 
@@ -67,6 +77,7 @@ export function PlayerDashboard() {
           </div>
           <div className="flex items-center gap-3">
             <LiveClock />
+            <SoundToggle />
             <Badge variant="outline" className="border-amber-400/40 text-amber-400">
               <Coins className="h-3 w-3 mr-1" /> {fam.coins}
             </Badge>
@@ -178,6 +189,7 @@ export function PlayerDashboard() {
             <QuestTrackerPanel />
             <BuffsPanel />
             <AchievementsPanel />
+            <CustomizePanel />
             <ActivityLogPanel />
 
             {/* Mobile: show party roster inline at the bottom */}
@@ -200,6 +212,7 @@ export function PlayerDashboard() {
 
       <MiniGame />
       <EvolutionModal />
+      <CelebrationOverlay celebration={celebration} />
     </div>
   );
 }

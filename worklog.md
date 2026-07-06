@@ -370,3 +370,75 @@ Task: Assess project status, QA via agent-browser, add DM Quest system + achieve
 
 Stage Summary:
 - 2 new features (DM Quest system with player tracker + DM creation panel, achievement coin rewards by tier) + styling polish (animated shimmer logo, card hover effects, enhanced evolution modal with clickable cards + letter badges + warning footer). All browser-verified end-to-end (DM created quest → player saw quest → fed 3× → quest completed + rewards granted + achievement unlocked). Lint-clean, no errors. Services running on :3000 and :3003. 3/11 achievements now unlocked for raven (Первая Метаморфоза + Подросток + Кладоискатель).
+
+---
+Task ID: 14 (QA + Feature Round 4)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, add sound effects + familiar customization + celebration overlay + styling polish.
+
+## Current Project Status (assessment)
+- Both services UP on arrival (:3000, :3003). No restart needed before QA.
+- agent-browser QA: auth, login (raven + dm), dashboard, DM panel all working. No browser/console/runtime errors.
+- Previous rounds' features (quests, achievements, thoughts, daily buff, pet, activity log, party roster) all intact.
+- Project stable → proceeded with new feature development.
+
+## Completed Modifications (this round)
+
+### 1. Sound Effects System (new feature)
+- **`src/lib/sound.ts`** — singleton SoundManager class using Web Audio API (no external files):
+  - `play(name)` — 10 synthesized SFX: feed (sine arpeggio 440→880), play (triangle 523→1047), pet (sine glide 880→1320), sleep (sine descent 392→262), wake (triangle ascent 262→523), evolve (sawtooth 262→1568, 1.2s), quest (triangle 659→1319), achievement (triangle 523→1319), error (sawtooth 220→140), click (square 800).
+  - `startAmbient()` / `stopAmbient()` — low ambient drone (A1+E2+A2 fifth, 3 detuned oscillators + 0.08Hz LFO for breathing effect, gain 0.08).
+  - `setMuted()` / `toggleMuted()` — persists to localStorage `ddt_muted`, ramps master gain.
+  - Starts ambient on first user gesture (pointerdown/keydown) to satisfy browser autoplay policies.
+- **`src/hooks/use-sound.ts`** — `useSound()` hook: `muted` state + `toggle()` + `play()` callbacks.
+- **`SoundToggle.tsx`** — Volume2/VolumeX icon button in header.
+- **Wired into all actions** via use-familiar hook: feed/play/pet/sleep/wake/evolve/claimBuff each play their SFX on success; error SFX on failure; achievement SFX on unlock; quest SFX on completion.
+- Added SoundToggle to both PlayerDashboard and AdminPanel headers.
+
+### 2. Familiar Customization (new feature)
+- **DB:** Added `accentColor` (nullable String) field to Familiar model. Pushed schema + regenerated Prisma client.
+- **Types:** Added `accentColor: string | null` to FamiliarDTO; updated `toFamiliarDTO()`.
+- **API:** `POST /api/familiar/customize`:
+  - Rename: 25 coin cost (deducted), max 30 chars, logs as 'admin_edit'.
+  - Accent color: free to change, **unlocks at Stage 2+** (returns 400 if Stage 1), validates #RRGGBB hex or null (reset).
+  - Broadcasts familiar update via socket.
+- **UI:** `CustomizePanel.tsx`:
+  - Rename section: shows current name + pencil edit button; inline input + check save button; shows 25-coin cost hint.
+  - Accent color section: 10 preset color swatches (purple/blue/green/orange/red/pink/teal/yellow/violet/cyan) + ✕ reset button; shows current hex value; locked state with explanation for Stage 1 players.
+
+### 3. Celebration Overlay + Animated Numbers (styling polish)
+- **`AnimatedNumber.tsx`** — smoothly animates number changes (ease-out cubic, 600ms) via requestAnimationFrame. Used in StatBar values so stats count up/down fluidly.
+- **`CelebrationOverlay.tsx`** — full-screen overlay (z-100) with:
+  - 30 confetti particles bursting outward (7 colors, random delays/sizes, 1.2s animation).
+  - Center content: big emoji + colored label with glow, 2.5s pop animation.
+  - Auto-dismisses via store `clearCelebration` after 2.6s.
+- **Store additions:** `celebration` state + `triggerCelebration(emoji, label, color)` + `clearCelebration()`.
+- **Wired into use-familiar:** `announceAchievements` triggers celebration (tier-colored: gold/silver/bronze), `announceQuestResult` triggers green ✅ celebration on quest completion.
+
+## Verification (agent-browser, all passed)
+- Login as raven → dashboard renders with new SoundToggle ("Выключить звук") in header + CustomizePanel in right column. ✓
+- CustomizePanel: shows "Имя фамильяра" (25 coin cost) + "Искра" + accent color section (10 swatches + ✕, Stage 2 unlocked). ✓
+- Set accent color #A855F7 → applied, hex shown, no errors. ✓
+- Rename: pencil → typed "Искра Пламенная" → check → name updated, coins 117→92 (−25). ✓
+- Sound toggle: click → "Включить звук", click again → "Выключить звук". No console errors (Web Audio API functioning). ✓
+- Pet action with sound on: mood capped at 100, no errors. SFX synthesized in-browser. ✓
+- AnimatedNumber: stats display "100/100" with smooth counting. ✓
+- No browser errors, no console errors, no dev-log errors.
+- Lint: 0 errors, 0 warnings.
+- Services: both running (:3000, :3003), hourly cron ticking (2 familiars, resonance 90%, "+2 Temp HP").
+
+## Unresolved Issues / Risks
+- None critical. All features browser-verified.
+- Web Audio API requires user gesture to start — handled via first pointerdown/keydown listener. If user never interacts, no sound (expected browser behavior).
+- Accent color currently only stored on the familiar; not yet wired into the 3D model's material color (would require passing accentColor to FamiliarCanvas as a modelConfig override). Future enhancement.
+
+## Next-Phase Priority Recommendations
+1. **Wire accentColor into 3D model** — pass the custom color to FamiliarCanvas as a modelConfig override so it visually tints the familiar.
+2. **Mobile swipe-up inventory drawer** (vaul-based) — better mobile UX for the growing right-panel stack.
+3. **Trading/gifting** — spend coins to send a mood/sync boost to a party member.
+4. **Quest templates** — DM can pick from preset quest templates.
+5. **Achievement detail modal** — click an achievement for full description + unlock date + reward.
+6. **Background music tracks** — multiple ambient tracks (forest/cave/tavern) selectable from a menu.
+
+Stage Summary:
+- 2 new features (sound effects system with 10 synthesized SFX + ambient drone + mute toggle, familiar customization with rename + accent color picker) + styling polish (animated number counters, full-screen celebration overlay with confetti for quest/achievement completions). All browser-verified (rename worked −25 coins, accent color applied, sound toggle functional, no errors). Lint-clean. Services running on :3000 and :3003. 4/11 achievements now unlocked for raven (Первая Метаморфоза + Подросток + Кладоискатель + Игривый likely from previous play tests).

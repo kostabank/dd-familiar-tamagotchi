@@ -15,6 +15,7 @@ import { CloudLightning, PartyPopper, LogOut, RefreshCw, Users } from 'lucide-re
 import { LiveClock } from './LiveClock';
 import { AmbientBackground } from './AmbientBackground';
 import { DmQuestPanel } from './DmQuestPanel';
+import { SoundToggle } from './SoundToggle';
 
 export function AdminPanel() {
   const { doLogout } = useAuth();
@@ -105,6 +106,7 @@ export function AdminPanel() {
           </div>
           <div className="flex items-center gap-2">
             <LiveClock />
+            <SoundToggle />
             <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Обновить
             </Button>

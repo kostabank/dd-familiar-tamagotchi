@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { AnimatedNumber } from './AnimatedNumber';
 
 interface StatBarProps {
   label: string;
@@ -56,7 +57,8 @@ export function StatBar({
         </span>
         {showValue && (
           <span className="font-mono text-foreground/90 tabular-nums">
-            {Math.round(value)}<span className="text-muted-foreground">/{max}</span>
+            <AnimatedNumber value={value} />
+            <span className="text-muted-foreground">/{max}</span>
           </span>
         )}
       </div>
@@ -79,4 +81,5 @@ export function StatBar({
     </div>
   );
 }
+
 

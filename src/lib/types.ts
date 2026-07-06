@@ -28,6 +28,7 @@ export interface FamiliarDTO {
   sleepStartedAt: string | null;
   lastTick: string;
   coins: number;
+  accentColor: string | null;
   state: FamiliarState;
 }
 
