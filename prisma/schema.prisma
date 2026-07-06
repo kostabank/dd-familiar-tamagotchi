@@ -140,3 +140,16 @@ model PlayerQuest {
   // Only one active (non-completed) quest per player.
   @@unique([userId, questId])
 }
+
+// Gifts sent between players (costs coins, boosts recipient's mood/sync).
+model Gift {
+  id          String   @id @default(cuid())
+  fromUserId  String
+  toUserId    String
+  giftType    String   // 'treat' | 'toy' | 'charm' (different cost/boost)
+  coinCost    Int
+  moodBoost   Int
+  syncBoost   Int
+  message     String?
+  createdAt   DateTime @default(now())
+}

@@ -36,7 +36,44 @@ export const GAME = {
   PET_COOLDOWN_MS: 30 * 1000, // 30s cooldown to prevent spam
   // Daily buff claim
   DAILY_CLAIM_COIN_REWARD: 15,
+  // Gifts (player-to-player trading)
+  GIFT_COOLDOWN_MS: 60 * 1000, // 1 min cooldown per recipient
 } as const;
+
+export interface GiftType {
+  code: string;
+  label: string;
+  emoji: string;
+  coinCost: number;
+  moodBoost: number;
+  syncBoost: number;
+  description: string;
+}
+
+export const GIFT_TYPES: GiftType[] = [
+  { code: 'treat', label: 'Лакомство', emoji: '🍖', coinCost: 10, moodBoost: 10, syncBoost: 2, description: 'Вкусное угощение поднимает настроение' },
+  { code: 'toy', label: 'Игрушка', emoji: '🧸', coinCost: 20, moodBoost: 15, syncBoost: 5, description: 'Забавная игрушка для игры' },
+  { code: 'charm', label: 'Талисман', emoji: '🔮', coinCost: 35, moodBoost: 20, syncBoost: 10, description: 'Магический талисман усиливает связь' },
+];
+
+export interface QuestTemplate {
+  title: string;
+  description: string;
+  metric: string;
+  goal: number;
+  syncReward: number;
+  coinReward: number;
+  emoji: string;
+}
+
+export const QUEST_TEMPLATES: QuestTemplate[] = [
+  { title: 'Утренний завтрак', description: 'Фамильяр проголодался после ночного дозора. Покорми его дважды!', metric: 'feed', goal: 2, syncReward: 15, coinReward: 10, emoji: '🍳' },
+  { title: 'Щедрый повар', description: 'Устрой пир для своего фамильяра — покорми его 5 раз!', metric: 'feed', goal: 5, syncReward: 25, coinReward: 20, emoji: ' Feast' },
+  { title: 'Игривый час', description: 'Поиграй с фамильяром 3 раза — ему нужно размяться!', metric: 'play', goal: 3, syncReward: 20, coinReward: 15, emoji: '🎮' },
+  { title: 'Ласковый хозяин', description: 'Погладь фамильяра 5 раз — он скучает по вниманию.', metric: 'pet', goal: 5, syncReward: 15, coinReward: 10, emoji: '💗' },
+  { title: 'Испытание магией', description: 'Получи бафф дня, чтобы усилить фамильяра.', metric: 'claim_buff', goal: 1, syncReward: 10, coinReward: 5, emoji: '✨' },
+  { title: 'Большое приключение', description: 'Поиграй с фамильяром 5 раз для укрепления связи!', metric: 'play', goal: 5, syncReward: 30, coinReward: 25, emoji: '⚔️' },
+];
 
 export function clamp(v: number, min = GAME.MIN_STAT, max = GAME.MAX_STAT): number {
   return Math.max(min, Math.min(max, v));

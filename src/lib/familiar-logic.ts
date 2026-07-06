@@ -279,12 +279,13 @@ export async function getRecentLogs(familiarId: string, limit = 12): Promise<{ i
 }
 
 /** Returns a lightweight roster of all players + their familiars (for party sidebar). */
-export async function getPartyRoster(): Promise<{ username: string; characterName: string | null; species: string; name: string; stage: number; mood: number; energy: number; state: FamiliarState }[]> {
+export async function getPartyRoster(): Promise<{ userId: string; username: string; characterName: string | null; species: string; name: string; stage: number; mood: number; energy: number; state: FamiliarState }[]> {
   const rows = await db.familiar.findMany({
-    include: { user: { select: { username: true, characterName: true } } },
+    include: { user: { select: { id: true, username: true, characterName: true } } },
     orderBy: { createdAt: 'asc' },
   });
   return rows.map((f) => ({
+    userId: f.user.id,
     username: f.user.username,
     characterName: f.user.characterName,
     species: f.species,

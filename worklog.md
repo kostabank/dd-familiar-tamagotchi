@@ -646,3 +646,69 @@ Task: Assess project status, QA via agent-browser, add familiar profile modal + 
 
 Stage Summary:
 - 2 new features (familiar profile modal with bio/stats/evolution history/achievements/creation date, persistent notification feed with severity-colored events) + styling polish (species-themed profile header, color-coded stat tiles, severity-colored notification borders, canvas name click affordance). All browser-verified (profile modal opens with full data, notification feed shows 7 events with correct severities). Lint-clean, no errors. Services running on :3000 and :3003.
+
+---
+Task ID: 18 (QA + Feature Round 8)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, add trading/gifting + quest templates + styling polish.
+
+## Current Project Status (assessment)
+- Both services UP on arrival (:3000, :3003). No restart needed before QA.
+- agent-browser QA: auth, login (raven), dashboard all working. No browser/console/runtime errors.
+- raven's familiar "Искра Пламенная" (Stage 2 dragon) intact; thorn construct also rendering.
+- Project stable → proceeded with new feature development.
+
+## Completed Modifications (this round)
+
+### 1. Trading / Gifting (new feature)
+- **DB:** Added `Gift` model (fromUserId, toUserId, giftType, coinCost, moodBoost, syncBoost, message, createdAt). Pushed schema + regenerated Prisma client.
+- **Constants:** `GIFT_TYPES` array — 3 gift types:
+  - 🍖 Лакомство (10 coins, +10 mood, +2 sync)
+  - 🧸 Игрушка (20 coins, +15 mood, +5 sync)
+  - 🔮 Талисман (35 coins, +20 mood, +10 sync)
+  - `GIFT_COOLDOWN_MS` = 60s per recipient.
+- **API:** `POST /api/familiar/gift` — validates sender has coins, recipient exists, cooldown enforced (429 with countdown). Deducts sender coins, boosts recipient mood+sync, creates Gift record + InteractionLogs on both familiars, broadcasts updates via socket. `GET /api/familiar/gift` — recent 10 gifts received.
+- **UI:** `GiftDialog.tsx` — modal with 3 gift-type buttons (emoji + label + cost + boost description), can't-afford state (red coin count, disabled), optional message input (100 char), Send button. Plays 'quest' SFX on success, 'error' on failure.
+- **PartyRosterSidebar:** Added gift button (Gift icon, arcane) per non-self player. Updated `getPartyRoster()` + `PartyRosterEntry` to include `userId` for the gift API. Clicking opens GiftDialog pre-filled with recipient info.
+
+### 2. Quest Templates (new feature)
+- **Constants:** `QUEST_TEMPLATES` array — 6 preset templates:
+  - 🍳 Утренний завтрак (feed ×2, +15 sync, +10 coins)
+  - Feast Щедрый повар (feed ×5, +25 sync, +20 coins)
+  - 🎮 Игривый час (play ×3, +20 sync, +15 coins)
+  - 💗 Ласковый хозяин (pet ×5, +15 sync, +10 coins)
+  - ✨ Испытание магией (claim_buff ×1, +10 sync, +5 coins)
+  - ⚔️ Большое приключение (play ×5, +30 sync, +25 coins)
+- **DmQuestPanel:** Added template selector section at top of creation form — row of small buttons (emoji + title). `applyTemplate(t)` fills title/description/metric/goal/syncReward/coinReward fields. Hover shows border-amber-400/40 + text-amber-300.
+
+### 3. Styling Polish
+- **Gift dialog:** 3 gift cards with emoji + label + coin cost (color-coded by affordability) + description + mood/sync boost badges. Selected card gets arcane border + glow.
+- **Party roster gift buttons:** Compact Gift icon buttons (h-6 w-6) next to state indicator, only for non-self players.
+- **Quest template buttons:** Small pill buttons with emoji, hover amber highlight.
+
+## Verification (agent-browser, all passed)
+- Login as raven → party roster shows gift button (Gift icon) next to Торн. ✓
+- Clicked gift button → GiftDialog opened with 3 gift types (Лакомство 10, Игрушка 20, Талисман 35) showing costs + boosts. ✓
+- Selected Лакомство → Подарить → coins 92→82 (−10), toast "Подарок отправлен". ✓
+- Verified recipient: thorn's mood 80→90 (+10), sync 0→2 (+2) via API. ✓
+- Login as DM → DmQuestPanel shows "Шаблоны квестов" with 6 template buttons. ✓
+- Clicked "🎮 Игривый час" → form auto-filled with title "Игривый час", description, metric "Играть", goal 3. ✓
+- No browser errors, no console errors, no dev-log errors.
+- Lint: 0 errors, 0 warnings.
+- Services: both running (:3000, :3003), hourly cron ticking (2 familiars, resonance 90%, "+2 Temp HP").
+
+## Unresolved Issues / Risks
+- None critical. All features browser-verified end-to-end (gift sent → recipient boosted, template applied → form filled).
+- Gift cooldown is per-recipient (60s) — prevents spam to one player but allows gifting multiple players.
+- Gifts log to both sender's + recipient's InteractionLog with 'admin_edit'/'claim_buff' action types (reused existing types to avoid schema changes for new action categories).
+
+## Next-Phase Priority Recommendations
+1. **Background music tracks** — multiple ambient tracks (forest/cave/tavern) selectable from a menu.
+2. **Weekly leaderboard reset** — track best rank per week with historical view.
+3. **Familiar profile for other players** — click a player in the party roster to view their familiar's public profile.
+4. **Search/filter in activity log + notifications** — filter by action type or date range.
+5. **Gift received indicator** — toast + visual indicator when your familiar receives a gift while online.
+6. **Achievement for gifting** — "Щедрый" achievement for sending N gifts.
+
+Stage Summary:
+- 2 new features (trading/gifting with 3 gift types + coin cost + mood/sync boost + cooldown, quest templates with 6 presets for DM quick-fill) + styling polish (gift dialog with affordability states, party roster gift buttons, quest template selector). All browser-verified end-to-end (raven sent Лакомство to thorn → coins −10, thorn mood +10/sync +2; DM applied "Игривый час" template → form filled). Lint-clean, no errors. Services running on :3000 and :3003.

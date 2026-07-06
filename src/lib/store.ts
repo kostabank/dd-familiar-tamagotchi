@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { UserPublic, FamiliarDTO, BuffSummary, PartyResonance, InteractionLogDTO } from './types';
 
 export interface PartyRosterEntry {
+  userId: string;
   username: string;
   characterName: string | null;
   species: string;

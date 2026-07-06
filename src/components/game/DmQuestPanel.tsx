@@ -10,8 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import { questMetricLabel } from '@/lib/familiar-logic';
+import { QUEST_TEMPLATES, type QuestTemplate } from '@/lib/constants';
 import type { PlayerQuestDTO, QuestDTO } from '@/lib/familiar-logic';
-import { ScrollText, Plus, History, Target, Coins, Wifi } from 'lucide-react';
+import { ScrollText, Plus, History, Target, Coins, Wifi, LayoutTemplate } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const METRICS = ['feed', 'play', 'pet', 'claim_buff', 'evolve'] as const;
@@ -80,6 +81,16 @@ export function DmQuestPanel() {
     }
   };
 
+  const applyTemplate = (t: QuestTemplate) => {
+    setTitle(t.title);
+    setDescription(t.description);
+    setMetric(t.metric as Metric);
+    setGoal(t.goal);
+    setSyncReward(t.syncReward);
+    setCoinReward(t.coinReward);
+    toast(`Шаблон "${t.title}" загружен`);
+  };
+
   return (
     <Card className="arcane-border">
       <CardHeader className="pb-3">
@@ -96,6 +107,26 @@ export function DmQuestPanel() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Template selector */}
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <LayoutTemplate className="h-3 w-3" /> Шаблоны квестов
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {QUEST_TEMPLATES.map((t) => (
+              <button
+                key={t.title}
+                type="button"
+                onClick={() => applyTemplate(t)}
+                className="px-2 py-1 rounded-md text-[10px] border border-white/10 bg-white/5 text-muted-foreground hover:border-amber-400/40 hover:text-amber-300 transition-all"
+                title={`${t.title} — ${questMetricLabel(t.metric)} ×${t.goal}`}
+              >
+                {t.emoji} {t.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Creation form */}
         <div className="space-y-3 rounded-lg border border-amber-400/20 bg-amber-400/[0.03] p-3">
           <div className="space-y-1.5">
