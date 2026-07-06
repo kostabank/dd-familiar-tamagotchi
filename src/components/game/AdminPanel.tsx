@@ -14,6 +14,7 @@ import type { AdminFamiliarRow, FamiliarDTO } from '@/lib/types';
 import { CloudLightning, PartyPopper, LogOut, RefreshCw, Users } from 'lucide-react';
 import { LiveClock } from './LiveClock';
 import { AmbientBackground } from './AmbientBackground';
+import { DmQuestPanel } from './DmQuestPanel';
 
 export function AdminPanel() {
   const { doLogout } = useAuth();
@@ -94,7 +95,7 @@ export function AdminPanel() {
       <header className="border-b border-arcane/15 bg-card/40 backdrop-blur sticky top-0 z-20">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-red-600 to-arcane flex items-center justify-center font-bold text-sm">
+            <div className="h-9 w-9 rounded-lg logo-animated flex items-center justify-center font-bold text-sm text-white">
               DM
             </div>
             <div>
@@ -144,6 +145,9 @@ export function AdminPanel() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* DM Quest management */}
+        <DmQuestPanel />
 
         {/* Players table */}
         <Card className="arcane-border">

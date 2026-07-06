@@ -211,3 +211,31 @@
   );
   border-radius: inherit;
 }
+
+/* Card hover lift effect */
+.card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(168,85,247,0.35);
+  box-shadow: 0 8px 24px -8px rgba(168,85,247,0.25);
+}
+
+/* Animated gradient logo */
+@keyframes logo-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.logo-animated {
+  background: linear-gradient(120deg, #A855F7, #3B82F6, #A855F7, #ec4899, #A855F7);
+  background-size: 300% 100%;
+  animation: logo-shimmer 6s ease-in-out infinite;
+}
+
+/* Quest complete celebration glow */
+@keyframes quest-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+  50% { box-shadow: 0 0 20px 4px rgba(251,191,36,0.4); }
+}
+.quest-glow { animation: quest-glow 2s ease-in-out infinite; }

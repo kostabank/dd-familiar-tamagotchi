@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { recomputeAndPersist, toFamiliarDTO, checkAndUnlockAchievements } from '@/lib/familiar-logic';
+import {
+  recomputeAndPersist,
+  toFamiliarDTO,
+  checkAndUnlockAchievements,
+  grantAchievementRewards,
+  progressQuest,
+} from '@/lib/familiar-logic';
 import { GAME, clamp } from '@/lib/constants';
 import { broadcastFamiliarUpdate, broadcastPartyResonance } from '@/lib/socket-client';
 import { computePartyResonance } from '@/lib/familiar-logic';
@@ -40,10 +46,21 @@ export async function POST() {
     });
 
     const newlyUnlocked = await checkAndUnlockAchievements(me.id);
-    const dto = toFamiliarDTO(updated);
+    const rewardCoins = await grantAchievementRewards(me.id, newlyUnlocked);
+    const questResult = await progressQuest(me.id, 'feed');
+    // Re-fetch familiar if coins/sync changed from rewards/quest.
+    const finalFam = (rewardCoins > 0 || questResult.rewardGranted) ? await db.familiar.findUnique({ where: { userId: me.id } }) : updated;
+    const dto = toFamiliarDTO(finalFam!);
     await broadcastFamiliarUpdate(dto);
     await broadcastPartyResonance(await computePartyResonance());
-    return NextResponse.json({ familiar: dto, newAchievements: newlyUnlocked });
+    return NextResponse.json({
+      familiar: dto,
+      newAchievements: newlyUnlocked,
+      achievementCoins: rewardCoins,
+      quest: questResult.quest,
+      questCompleted: questResult.justCompleted,
+      questReward: questResult.rewardGranted,
+    });
   } catch (e) {
     console.error('[familiar/feed]', e);
     return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 });

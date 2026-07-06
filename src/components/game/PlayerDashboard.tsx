@@ -15,6 +15,7 @@ import { DailyBuffPanel } from './DailyBuffPanel';
 import { ActivityLogPanel } from './ActivityLogPanel';
 import { PartyRosterSidebar } from './PartyRosterSidebar';
 import { AchievementsPanel } from './AchievementsPanel';
+import { QuestTrackerPanel } from './QuestTrackerPanel';
 import { LiveClock } from './LiveClock';
 import { AmbientBackground } from './AmbientBackground';
 import { useStore } from '@/lib/store';
@@ -52,7 +53,7 @@ export function PlayerDashboard() {
       <header className="border-b border-arcane/15 bg-card/40 backdrop-blur sticky top-0 z-20">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-arcane to-frost flex items-center justify-center font-bold text-sm shrink-0 animate-float-slow">
+            <div className="h-9 w-9 rounded-lg logo-animated flex items-center justify-center font-bold text-sm shrink-0 animate-float-slow text-white">
               D&D
             </div>
             <div className="min-w-0">
@@ -174,6 +175,7 @@ export function PlayerDashboard() {
             </Card>
 
             <DailyBuffPanel />
+            <QuestTrackerPanel />
             <BuffsPanel />
             <AchievementsPanel />
             <ActivityLogPanel />

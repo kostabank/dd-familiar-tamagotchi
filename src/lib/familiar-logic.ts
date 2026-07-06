@@ -424,3 +424,219 @@ export async function checkAndUnlockAchievements(userId: string): Promise<Achiev
   }
   return newlyUnlocked;
 }
+
+// ---------------------------------------------------------------------------
+// Achievement rewards — grant coins on unlock based on tier.
+// ---------------------------------------------------------------------------
+
+const ACHIEVEMENT_REWARDS: Record<string, number> = {
+  bronze: 20,
+  silver: 50,
+  gold: 150,
+};
+
+/**
+ * Grants coin rewards for newly-unlocked achievements. Mutates the familiar's
+ * coin balance and returns the total coins awarded.
+ */
+export async function grantAchievementRewards(userId: string, unlocked: AchievementDTO[]): Promise<number> {
+  if (unlocked.length === 0) return 0;
+  let total = 0;
+  for (const a of unlocked) {
+    total += ACHIEVEMENT_REWARDS[a.tier] || 0;
+  }
+  if (total > 0) {
+    await db.familiar.update({
+      where: { userId },
+      data: { coins: { increment: total } },
+    });
+    await db.interactionLog.create({
+      data: {
+        familiarId: (await db.familiar.findUnique({ where: { userId }, select: { id: true } }))!.id,
+        userId,
+        actionType: 'claim_buff',
+        detail: `achievement_reward +${total} coins (${unlocked.map((a) => a.code).join(',')})`,
+      },
+    });
+  }
+  return total;
+}
+
+// ---------------------------------------------------------------------------
+// DM Quest system
+// ---------------------------------------------------------------------------
+
+export interface QuestDTO {
+  id: string;
+  title: string;
+  description: string;
+  metric: string; // 'feed' | 'play' | 'pet' | 'claim_buff' | 'evolve'
+  goal: number;
+  syncReward: number;
+  coinReward: number;
+  createdAt: string;
+}
+
+export interface PlayerQuestDTO extends QuestDTO {
+  playerQuestId: string;
+  progress: number;
+  completed: boolean;
+  completedAt: string | null;
+  assignedAt: string;
+}
+
+const QUEST_METRIC_LABELS: Record<string, string> = {
+  feed: 'Кормить',
+  play: 'Играть',
+  pet: 'Гладить',
+  claim_buff: 'Получить бафф дня',
+  evolve: 'Эволюционировать',
+};
+
+export function questMetricLabel(metric: string): string {
+  return QUEST_METRIC_LABELS[metric] || metric;
+}
+
+function toQuestDTO(q: {
+  id: string; title: string; description: string; metric: string;
+  goal: number; syncReward: number; coinReward: number; createdAt: Date;
+}): QuestDTO {
+  return {
+    id: q.id, title: q.title, description: q.description, metric: q.metric,
+    goal: q.goal, syncReward: q.syncReward, coinReward: q.coinReward,
+    createdAt: q.createdAt instanceof Date ? q.createdAt.toISOString() : q.createdAt,
+  };
+}
+
+function toPlayerQuestDTO(pq: {
+  id: string; progress: number; completed: boolean; completedAt: Date | null; assignedAt: Date;
+  quest: { id: string; title: string; description: string; metric: string; goal: number; syncReward: number; coinReward: number; createdAt: Date };
+}): PlayerQuestDTO {
+  return {
+    ...toQuestDTO(pq.quest),
+    playerQuestId: pq.id,
+    progress: pq.progress,
+    completed: pq.completed,
+    completedAt: pq.completedAt ? (pq.completedAt instanceof Date ? pq.completedAt.toISOString() : pq.completedAt) : null,
+    assignedAt: pq.assignedAt instanceof Date ? pq.assignedAt.toISOString() : pq.assignedAt,
+  };
+}
+
+/**
+ * DM creates a quest and assigns it to all players (replaces any active quest
+ * for each player by marking old ones... actually we just create new assignments;
+ * getActiveQuestForPlayer returns the most recent non-completed one).
+ */
+export async function createQuestAndAssign(
+  dmUserId: string,
+  data: { title: string; description: string; metric: string; goal: number; syncReward?: number; coinReward?: number },
+): Promise<QuestDTO> {
+  const quest = await db.quest.create({
+    data: {
+      title: data.title,
+      description: data.description,
+      metric: data.metric,
+      goal: data.goal,
+      syncReward: data.syncReward ?? 15,
+      coinReward: data.coinReward ?? 10,
+    },
+  });
+  // Assign to all players.
+  const players = await db.user.findMany({ where: { role: 'player' }, select: { id: true } });
+  for (const p of players) {
+    // Mark existing active quests for this player as completed-without-reward
+    // (superseded) by deleting them — simplest approach for "one active quest".
+    await db.playerQuest.deleteMany({ where: { userId: p.id, completed: false } });
+    await db.playerQuest.create({
+      data: { userId: p.id, questId: quest.id },
+    });
+  }
+  void dmUserId;
+  return toQuestDTO(quest);
+}
+
+/** Returns the active (non-completed) quest for a player, or null. */
+export async function getActiveQuestForPlayer(userId: string): Promise<PlayerQuestDTO | null> {
+  const pq = await db.playerQuest.findFirst({
+    where: { userId, completed: false },
+    include: { quest: true },
+    orderBy: { assignedAt: 'desc' },
+  });
+  if (!pq) return null;
+  return toPlayerQuestDTO(pq);
+}
+
+/** Returns all active quests across all players (for DM view). */
+export async function getAllActiveQuests(): Promise<{ username: string; characterName: string | null; quest: PlayerQuestDTO }[]> {
+  const pqs = await db.playerQuest.findMany({
+    where: { completed: false },
+    include: { quest: true, user: { select: { username: true, characterName: true } } },
+    orderBy: { assignedAt: 'desc' },
+  });
+  return pqs.map((pq) => ({
+    username: pq.user.username,
+    characterName: pq.user.characterName,
+    quest: toPlayerQuestDTO(pq),
+  }));
+}
+
+/** Returns all quests ever created (DM history). */
+export async function getAllQuests(): Promise<QuestDTO[]> {
+  const quests = await db.quest.findMany({ orderBy: { createdAt: 'desc' }, take: 30 });
+  return quests.map(toQuestDTO);
+}
+
+/**
+ * Increments quest progress for a player when an action matching the quest's
+ * metric is performed. Auto-completes + grants rewards when progress >= goal.
+ * Returns the updated PlayerQuestDTO (or null if no active quest / metric mismatch).
+ */
+export async function progressQuest(
+  userId: string,
+  actionType: string,
+): Promise<{ quest: PlayerQuestDTO | null; justCompleted: boolean; rewardGranted: { sync: number; coins: number } | null }> {
+  const active = await getActiveQuestForPlayer(userId);
+  if (!active || active.metric !== actionType) {
+    return { quest: active, justCompleted: false, rewardGranted: null };
+  }
+  if (active.completed) {
+    return { quest: active, justCompleted: false, rewardGranted: null };
+  }
+  const newProgress = Math.min(active.goal, active.progress + 1);
+  const justCompleted = newProgress >= active.goal;
+
+  const updated = await db.playerQuest.update({
+    where: { id: active.playerQuestId },
+    data: {
+      progress: newProgress,
+      completed: justCompleted,
+      completedAt: justCompleted ? new Date() : null,
+    },
+    include: { quest: true },
+  });
+
+  let rewardGranted: { sync: number; coins: number } | null = null;
+  if (justCompleted) {
+    // Grant sync + coin rewards to the familiar.
+    const fam = await db.familiar.findUnique({ where: { userId } });
+    if (fam) {
+      const newSync = clamp(fam.sync + active.syncReward);
+      const newCoins = fam.coins + active.coinReward;
+      await db.familiar.update({
+        where: { userId },
+        data: { sync: newSync, coins: newCoins },
+      });
+      await db.interactionLog.create({
+        data: {
+          familiarId: fam.id,
+          userId,
+          actionType: 'claim_buff',
+          detail: `quest_completed:${active.title} +${active.syncReward}sync +${active.coinReward}coins`,
+        },
+      });
+      rewardGranted = { sync: active.syncReward, coins: active.coinReward };
+    }
+  }
+
+  return { quest: toPlayerQuestDTO(updated), justCompleted, rewardGranted };
+}

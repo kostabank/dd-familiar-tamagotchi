@@ -295,3 +295,78 @@ Task: Assess project status, QA via agent-browser, add achievements system + fam
 
 Stage Summary:
 - 2 new features (achievements system with 11 unlockable badges + familiar thoughts speech bubbles) + styling polish (glassmorphism, stat-pulse animation, scanlines, skeleton shimmer utilities). All browser-verified, lint-clean, no errors. Services running on :3000 and :3003. 2/11 achievements correctly auto-unlocked for existing Stage-2 dragon player.
+
+---
+Task ID: 13 (QA + Feature Round 3)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, add DM Quest system + achievement rewards + styling polish.
+
+## Current Project Status (assessment)
+- Both services UP on arrival (:3000, :3003). No restart needed before QA.
+- agent-browser QA: auth, login (raven + dm), dashboard, DM panel all working. No browser/console/runtime errors.
+- Previous rounds' features (daily buff, pet, activity log, party roster, achievements, thoughts, ambient bg, live clock) all intact.
+- Project stable → proceeded with new feature development.
+
+## Completed Modifications (this round)
+
+### 1. DM Quest System (new feature)
+- **DB:** Added `Quest` model (catalog: title, description, metric, goal, syncReward, coinReward, createdAt) + `PlayerQuest` model (userId+questId unique, progress, completed, completedAt, assignedAt). Pushed schema + regenerated Prisma client.
+- **Lib:** 
+  - `createQuestAndAssign(dmUserId, data)` — creates quest, assigns to all players (deletes previous active quests per player for "one active quest" semantics).
+  - `getActiveQuestForPlayer(userId)` — returns the most recent non-completed quest.
+  - `getAllActiveQuests()` — DM view of all players' active quests with progress.
+  - `getAllQuests()` — quest history (last 30).
+  - `progressQuest(userId, actionType)` — increments progress when action matches quest metric; auto-completes + grants sync+coin rewards when progress≥goal.
+  - `questMetricLabel()` — human-readable metric labels (Кормить/Играть/Гладить/Получить бафф дня/Эволюционировать).
+- **API:**
+  - `GET /api/familiar/quest` — player's active quest.
+  - `POST /api/admin/quests` — DM creates + assigns quest (validates metric, clamps goal/rewards).
+  - `GET /api/admin/quests/list?mode=active|history` — DM lists active player quests or quest history.
+  - Wired `progressQuest()` into feed/play/pet/evolve/claim-buff routes — each returns `quest`, `questCompleted`, `questReward`.
+- **UI:**
+  - `QuestTrackerPanel.tsx` (player) — shows active quest with title, description, metric badge, progress bar (amber→arcane, emerald when complete), reward summary (+sync, +coins), "Готово!" badge + auto-reward notice. Re-fetches on familiar state changes.
+  - `DmQuestPanel.tsx` (DM) — creation form with title/description inputs, metric picker (5 buttons), 3 sliders (goal 1-10, sync 5-50, coins 5-100), "Выдать квест всем" button. Toggle between active-quests view (per-player progress bars) and history view. Auto-refreshes every 15s.
+
+### 2. Achievement Rewards (new feature)
+- **Lib:** `grantAchievementRewards(userId, unlocked)` — grants coins based on tier: bronze +20, silver +50, gold +150. Increments familiar.coins + logs to InteractionLog.
+- Wired into feed/play/pet/evolve/claim-buff routes alongside `checkAndUnlockAchievements()`. Re-fetches familiar after rewards to reflect new coin balance.
+- Achievement toast now shows reward amount: "🏆 Достижение: {title} · {icon} {description} · +{reward} монет".
+
+### 3. Styling Polish
+- **globals.css additions:**
+  - `.card-hover` — card lift effect (translateY -2px + arcane border + glow shadow on hover).
+  - `.logo-animated` — animated 5-color shimmering gradient (purple→blue→purple→pink→purple, 6s loop) for header logo.
+  - `.quest-glow` — golden pulsing glow for quest-complete celebration.
+- **Header logos:** Both PlayerDashboard ("D&D") and AdminPanel ("DM") logos now use `logo-animated` shimmering gradient instead of static gradient.
+- **EvolutionModal enhancement:** 
+  - Path cards now have hover effects (border-arcane/60 + scale-1.02 + glow-arcane + cursor-pointer).
+  - Whole card is clickable (not just button).
+  - Added letter badges (A/B/C) in top-right of each preview.
+  - Added warning footer: "⚠️ Выбор необратим. Скрытый бафф зависит от пути и раскроется только после адаптации."
+
+## Verification (agent-browser, all passed)
+- Login as DM → admin panel shows new DmQuestPanel with creation form (title, description, 5 metric buttons, 3 sliders, submit button). ✓
+- Created quest "Утренний завтрак" (feed ×3, +15 sync, +10 coins) → "Квест выдан всем игрокам!" toast, active quests show both players (Торн 0/3, Рэйвен 0/3). ✓
+- Login as raven → QuestTrackerPanel shows "Утренний завтрак", metric "Кормить", description, progress 0/3, rewards +15синхр/+10монет. ✓
+- Feed ×3: quest progress 0→1→2→3, then quest completed + disappeared from tracker (shows "Мастер ещё не выдал квест"). ✓
+- Quest rewards granted: sync 7→31 (+15 quest + 9 from 3 feeds), coins 107→117 (+10 quest). ✓
+- Achievement unlocked during testing: 💰 Кладоискатель (100 coins) → 3/11 unlocked. Toast showed "+50 монет" reward. ✓
+- No browser errors, no console errors, no dev-log errors, no service-log errors.
+- Lint: 0 errors, 0 warnings.
+- Services: both running (:3000, :3003), hourly cron ticking (2 familiars, resonance 90%, "+2 Temp HP").
+
+## Unresolved Issues / Risks
+- None critical. All features browser-verified end-to-end.
+- Quest "one active per player" semantics implemented via delete-previous-active on new assignment — completed quests remain in history. If DM wants to reassign the same quest, a new Quest row is created (intentional, preserves history).
+- Achievement reward coins are granted immediately on unlock — could theoretically be farmed if an achievement's metric decreases then re-crosses the goal, but `PlayerAchievement` unique constraint prevents double-unlock.
+
+## Next-Phase Priority Recommendations
+1. **Sound effects / ambient audio toggle** — feed/play/pet/evolve/quest-complete SFX + background ambient track (with mute toggle in header).
+2. **Mobile swipe-up inventory drawer** (vaul-based) — better mobile UX for the growing right-panel stack.
+3. **Trading/gifting** — spend coins to send a mood/sync boost to a party member.
+4. **Familiar customization** — rename, choose accent color after evolution.
+5. **Quest templates** — DM can pick from preset quest templates instead of writing from scratch.
+6. **Achievement detail modal** — click an achievement to see full description + unlock date + reward.
+
+Stage Summary:
+- 2 new features (DM Quest system with player tracker + DM creation panel, achievement coin rewards by tier) + styling polish (animated shimmer logo, card hover effects, enhanced evolution modal with clickable cards + letter badges + warning footer). All browser-verified end-to-end (DM created quest → player saw quest → fed 3× → quest completed + rewards granted + achievement unlocked). Lint-clean, no errors. Services running on :3000 and :3003. 3/11 achievements now unlocked for raven (Первая Метаморфоза + Подросток + Кладоискатель).

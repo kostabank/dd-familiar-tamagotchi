@@ -4,15 +4,27 @@ import { useCallback } from 'react';
 import { useStore } from '@/lib/store';
 import { toast } from 'sonner';
 import type { FamiliarDTO, BuffSummary, InteractionLogDTO } from '@/lib/types';
-import type { AchievementDTO } from '@/lib/familiar-logic';
+import type { AchievementDTO, PlayerQuestDTO } from '@/lib/familiar-logic';
 
 /** Show a celebratory toast for each newly-unlocked achievement. */
 function announceAchievements(achievements: AchievementDTO[] | undefined) {
   if (!achievements || achievements.length === 0) return;
   for (const a of achievements) {
+    const reward = a.tier === 'gold' ? 150 : a.tier === 'silver' ? 50 : 20;
     toast.success(`🏆 Достижение: ${a.title}`, {
-      description: `${a.icon} ${a.description}`,
+      description: `${a.icon} ${a.description} · +${reward} монет`,
       duration: 6000,
+    });
+  }
+}
+
+/** Show a toast for quest completion + rewards. */
+function announceQuestResult(result: { questCompleted?: boolean; questReward?: { sync: number; coins: number } | null; quest?: PlayerQuestDTO | null } | undefined) {
+  if (!result) return;
+  if (result.questCompleted && result.questReward) {
+    toast.success(`✅ Квест выполнен: ${result.quest?.title}`, {
+      description: `Награда: +${result.questReward.sync} синхр., +${result.questReward.coins} монет`,
+      duration: 7000,
     });
   }
 }
@@ -45,6 +57,7 @@ export function useFamiliar() {
     }
     setFamiliar(data.familiar);
     announceAchievements(data.newAchievements);
+    announceQuestResult(data);
     toast.success('Фамильяр накормлен', { description: `+энергия, +настроение` });
   }, [setFamiliar]);
 
@@ -58,6 +71,7 @@ export function useFamiliar() {
     setFamiliar(data.familiar);
     triggerPetEffect();
     announceAchievements(data.newAchievements);
+    announceQuestResult(data);
     toast('Фамильяр мурлычет от ласки', { description: `+${3} настроение` });
   }, [setFamiliar, triggerPetEffect]);
 
@@ -75,6 +89,7 @@ export function useFamiliar() {
     }
     setFamiliar(data.familiar);
     announceAchievements(data.newAchievements);
+    announceQuestResult(data);
     if (data.success) {
       toast.success('Победа в мини-игре!', { description: `+${data.moodGain} настроение, +${data.coins} монет` });
     } else {
@@ -115,6 +130,7 @@ export function useFamiliar() {
     setFamiliar(data.familiar);
     setBuffs(data.buffs);
     announceAchievements(data.newAchievements);
+    announceQuestResult(data);
     toast.success('Бафф дня получен!', { description: `+15 монет, бафф активирован на сегодня` });
     return data;
   }, [setFamiliar, setBuffs]);
@@ -139,6 +155,13 @@ export function useFamiliar() {
     return res.json();
   }, []);
 
+  const fetchActiveQuest = useCallback(async (): Promise<PlayerQuestDTO | null> => {
+    const res = await fetch('/api/familiar/quest', { credentials: 'same-origin' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.quest || null;
+  }, []);
+
   const evolve = useCallback(async (optionId: string) => {
     setEvolving(true);
     setShowEvolutionModal(false);
@@ -158,6 +181,7 @@ export function useFamiliar() {
     // Let the 3D evolution animation play for ~2s before clearing.
     setTimeout(() => setEvolving(false), 2200);
     announceAchievements(data.newAchievements);
+    announceQuestResult(data);
     toast.success(`Эволюция: ${data.pathName}!`, {
       description: `Скрытый бафф раскрыт: ${data.revealedBuff}`,
     });
@@ -177,6 +201,7 @@ export function useFamiliar() {
     fetchEvolutionOptions,
     fetchLogs,
     fetchAchievements,
+    fetchActiveQuest,
     evolve,
     setShowMiniGame,
     setShowEvolutionModal,

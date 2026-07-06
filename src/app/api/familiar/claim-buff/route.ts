@@ -9,6 +9,8 @@ import {
   getDailyClaimStatus,
   nowMoscow,
   checkAndUnlockAchievements,
+  grantAchievementRewards,
+  progressQuest,
 } from '@/lib/familiar-logic';
 import { GAME, clamp } from '@/lib/constants';
 import { broadcastFamiliarUpdate } from '@/lib/socket-client';
@@ -44,10 +46,20 @@ export async function POST() {
     });
 
     const newlyUnlocked = await checkAndUnlockAchievements(me.id);
-    const dto = toFamiliarDTO(updated);
+    const rewardCoins = await grantAchievementRewards(me.id, newlyUnlocked);
+    const questResult = await progressQuest(me.id, 'claim_buff');
+    const finalFam = (rewardCoins > 0 || questResult.rewardGranted) ? await db.familiar.findUnique({ where: { userId: me.id } }) : updated;
+    const dto = toFamiliarDTO(finalFam!);
     const buffs = await computeBuffs(me.id);
     await broadcastFamiliarUpdate(dto);
-    return NextResponse.json({ familiar: dto, buffs, claimed: true, newAchievements: newlyUnlocked });
+    return NextResponse.json({
+      familiar: dto, buffs, claimed: true,
+      newAchievements: newlyUnlocked,
+      achievementCoins: rewardCoins,
+      quest: questResult.quest,
+      questCompleted: questResult.justCompleted,
+      questReward: questResult.rewardGranted,
+    });
   } catch (e) {
     console.error('[familiar/claim-buff]', e);
     return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 });

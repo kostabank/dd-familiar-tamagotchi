@@ -22,6 +22,7 @@ model User {
   interactionLogs InteractionLog[]
   dailyClaims    DailyBuffClaim[]
   achievements   PlayerAchievement[]
+  quests         PlayerQuest[]
 }
 
 model Familiar {
@@ -104,4 +105,36 @@ model PlayerAchievement {
   unlockedAt    DateTime @default(now())
 
   @@unique([userId, achievementId])
+}
+
+// DM-authored daily quests (one active per player at a time).
+// A quest tracks a metric goal (e.g. feed 3 times) and grants sync + coins on completion.
+model Quest {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  metric        String   // 'feed' | 'play' | 'pet' | 'claim_buff' | 'evolve'
+  goal          Int      // e.g. 3 (feed 3 times)
+  syncReward    Int      @default(15)
+  coinReward    Int      @default(10)
+  createdAt     DateTime @default(now())
+  // A quest is "active" until completed or a new one supersedes it.
+  // Per-player progress is tracked in PlayerQuest.
+  assignments   PlayerQuest[]
+}
+
+// Per-player quest assignment + progress.
+model PlayerQuest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questId     String
+  quest       Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
+  progress    Int      @default(0)
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  assignedAt  DateTime @default(now())
+
+  // Only one active (non-completed) quest per player.
+  @@unique([userId, questId])
 }
