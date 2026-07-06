@@ -29,6 +29,7 @@ export interface FamiliarDTO {
   lastTick: string;
   coins: number;
   accentColor: string | null;
+  bio: string | null;
   state: FamiliarState;
 }
 

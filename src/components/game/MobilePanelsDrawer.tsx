@@ -8,6 +8,7 @@ import { AchievementsPanel } from './AchievementsPanel';
 import { CustomizePanel } from './CustomizePanel';
 import { ActivityLogPanel } from './ActivityLogPanel';
 import { PartyRosterSidebar } from './PartyRosterSidebar';
+import { LeaderboardPanel } from './LeaderboardPanel';
 import { Layers, X } from 'lucide-react';
 
 /**
@@ -45,6 +46,7 @@ export function MobilePanelsDrawer() {
           </Button>
         </DrawerHeader>
         <div className="overflow-y-auto fantasy-scroll px-4 pb-6 space-y-3" style={{ maxHeight: 'calc(85vh - 60px)' }}>
+          <LeaderboardPanel />
           <BuffsPanel />
           <AchievementsPanel />
           <CustomizePanel />

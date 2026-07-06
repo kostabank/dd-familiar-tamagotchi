@@ -22,6 +22,7 @@ import { SoundToggle } from './SoundToggle';
 import { CustomizePanel } from './CustomizePanel';
 import { CelebrationOverlay } from './CelebrationOverlay';
 import { MobilePanelsDrawer } from './MobilePanelsDrawer';
+import { LeaderboardPanel } from './LeaderboardPanel';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
@@ -145,13 +146,16 @@ export function PlayerDashboard() {
                   перетаскивай для вращения
                 </div>
               </div>
-              <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between pointer-events-none">
-                <div>
+              <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 pointer-events-none">
+                <div className="min-w-0 flex-1">
                   <div className="text-xs text-muted-foreground">Имя фамильяра</div>
-                  <div className="text-lg font-semibold text-glow-arcane">{fam.name}</div>
+                  <div className="text-lg font-semibold text-glow-arcane truncate">{fam.name}</div>
+                  {fam.bio && (
+                    <p className="text-[10px] text-muted-foreground/80 italic line-clamp-2 mt-0.5 max-w-xs">{fam.bio}</p>
+                  )}
                 </div>
                 {fam.evolutionPath && (
-                  <Badge variant="outline" className="border-frost/40 text-frost backdrop-blur">
+                  <Badge variant="outline" className="border-frost/40 text-frost backdrop-blur shrink-0">
                     {fam.evolutionPath}
                   </Badge>
                 )}
@@ -201,6 +205,7 @@ export function PlayerDashboard() {
             <QuestTrackerPanel />
             {/* Secondary panels — hidden on mobile, available in the drawer */}
             <div className="hidden lg:block space-y-3 md:space-y-4">
+              <LeaderboardPanel />
               <BuffsPanel />
               <AchievementsPanel />
               <CustomizePanel />

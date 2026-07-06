@@ -22,9 +22,9 @@ export async function POST(req: NextRequest) {
     if (!familiar) return NextResponse.json({ error: 'Фамильяр не найден' }, { status: 404 });
 
     const body = await req.json();
-    const { name, accentColor } = body as { name?: string; accentColor?: string | null };
+    const { name, accentColor, bio } = body as { name?: string; accentColor?: string | null; bio?: string | null };
 
-    const updates: { name?: string; accentColor?: string | null; coins?: number } = {};
+    const updates: { name?: string; accentColor?: string | null; bio?: string | null; coins?: number } = {};
     let cost = 0;
 
     // Rename (costs coins unless name unchanged).
@@ -48,6 +48,15 @@ export async function POST(req: NextRequest) {
         updates.accentColor = accentColor;
       } else {
         return NextResponse.json({ error: 'Цвет должен быть в формате #RRGGBB' }, { status: 400 });
+      }
+    }
+
+    // Bio (free, max 500 chars, null to clear).
+    if (bio !== undefined) {
+      if (bio === null) {
+        updates.bio = null;
+      } else if (typeof bio === 'string') {
+        updates.bio = bio.slice(0, 500);
       }
     }
 

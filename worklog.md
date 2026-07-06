@@ -511,3 +511,68 @@ Task: Assess project status, QA via agent-browser, wire accentColor into 3D + ac
 
 Stage Summary:
 - 1 feature completion (accentColor wired into 3D model — familiar now visually tints with player's chosen color) + 2 new features (achievement detail modal with full info, mobile swipe-up drawer with vaul for secondary panels) + styling polish (stat-bar threshold ticks, species-themed canvas frame border with accent glow, achievement card hover effects). All browser-verified on desktop AND mobile (390×844). Lint-clean, no errors. Services running on :3000 and :3003.
+
+---
+Task ID: 16 (QA + Feature Round 6)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, add leaderboard + familiar bio/lore + styling polish.
+
+## Current Project Status (assessment)
+- Both services UP on arrival (:3000, :3003). No restart needed before QA.
+- agent-browser QA: auth, login (raven), dashboard all working. No browser/console/runtime errors.
+- raven's familiar "Искра Пламенная" (Stage 2 dragon) intact; thought bubble showing tired state.
+- Project stable → proceeded with new feature development.
+
+## Completed Modifications (this round)
+
+### 1. Leaderboard (new feature)
+- **API:** `GET /api/party/leaderboard` — ranks all players by composite score: `achievements*50 + coins + stage*100 + (mood+energy)/4`. Returns ranked entries with username, characterName, species, familiarName, stage, evolutionPath, coins, achievementsUnlocked, mood, energy. Also returns currentUserId for highlighting.
+- **UI:** `LeaderboardPanel.tsx`:
+  - Ranked list with rank badges: 🥇 Crown (gold), 🥈 Medal (silver), 🥉 Award (bronze) for top 3, plain numbers for rest.
+  - Each entry shows player name (characterName or username), species+familiar+stage, achievement count (Star icon), coin count (Coins icon).
+  - Current user highlighted with arcane ring + "(вы)" label.
+  - Auto-refreshes every 20s + on familiar state changes.
+  - Scrollable (h-64) with fantasy-scroll.
+- Added to PlayerDashboard secondary panels (top of the stack) + MobilePanelsDrawer.
+
+### 2. Familiar Bio / Lore (new feature)
+- **DB:** Added `bio` (nullable String, max 500 chars) field to Familiar model. Pushed schema + regenerated Prisma client.
+- **Types:** Added `bio: string | null` to FamiliarDTO; updated `toFamiliarDTO()`.
+- **API:** Extended `POST /api/familiar/customize` to accept `bio` field (free to edit, null to clear, max 500 chars).
+- **UI:** `BioSection` component (inline in CustomizePanel):
+  - Display mode: shows bio text (line-clamp-4) in a clickable card with hover hint "Редактировать"/"Добавить".
+  - Edit mode: Textarea with placeholder ("Расскажи историю своего фамильяра..."), character counter (X/500, red if over), Save + Cancel buttons.
+  - Empty state: italic "Нажми, чтобы добавить историю фамильяра...".
+- **Canvas overlay:** Bio now displays below the familiar name on the 3D canvas (line-clamp-2, italic, muted).
+
+### 3. Styling Polish
+- **Leaderboard rank medals:** Top 3 ranks get distinct icons (Crown/Medal/Award) with tier-colored backgrounds (amber-400/10, slate-400/10, amber-700/10) + borders.
+- **Bio card hover:** Display card has hover:border-arcane/30 transition; edit pencil hint appears on hover.
+- **Canvas overlay bio:** Bio text shows on canvas with line-clamp-2 + max-w-xs so it doesn't overflow.
+- **Party roster in canvas overlay:** familiarName now truncates properly with min-w-0 + flex-1.
+
+## Verification (agent-browser, all passed)
+- Login as raven → dashboard renders. LeaderboardPanel visible in secondary panels. ✓
+- Leaderboard shows: #1 Рэйвен Найтвинг (3 achievements, 92 coins, Stage 2) with arcane ring "(вы)", #2 Торн Громобой (0 achievements, 50 coins, Stage 1). ✓
+- API confirms: #1 raven (3 ach, 92 coins, stage 2), #2 thorn (0 ach, 50 coins, stage 1). ✓
+- Bio: clicked "Нажми, чтобы добавить историю" → textarea opened with character counter → typed bio about Искра Пламенная → "Сохранить" → bio saved + displayed. ✓
+- Bio on canvas overlay: shows below familiar name "Искра Пламенная родилась в жерле вулкана..." (line-clamp-2). ✓
+- No browser errors, no console errors, no dev-log errors.
+- Lint: 0 errors, 0 warnings.
+- Services: both running (:3000, :3003), hourly cron ticking (2 familiars, resonance 90%, "+2 Temp HP").
+
+## Unresolved Issues / Risks
+- None critical. All features browser-verified.
+- Leaderboard score formula is a heuristic (achievements*50 + coins + stage*100 + stats/4) — could be tuned based on playtesting.
+- Bio max 500 chars — sufficient for a paragraph; could add rich text formatting in future.
+
+## Next-Phase Priority Recommendations
+1. **Trading/gifting** — spend coins to send a mood/sync boost to a party member (new API + UI).
+2. **Quest templates** — DM can pick from preset quest templates instead of writing from scratch.
+3. **Notification feed** — persistent (not toast) feed of recent unlocks/quests/events.
+4. **Background music tracks** — multiple ambient tracks (forest/cave/tavern) selectable from a menu.
+5. **Familiar profile modal** — click familiar name for a full profile view (bio, stats, achievements, evolution history).
+6. **Weekly leaderboard reset** — track best rank per week with historical view.
+
+Stage Summary:
+- 2 new features (leaderboard with rank medals + composite scoring, familiar bio/lore with editable text + character counter + canvas overlay display) + styling polish (rank medals, bio card hover, canvas bio display). All browser-verified (leaderboard ranks correct, bio saved + displayed on canvas). Lint-clean, no errors. Services running on :3000 and :3003.

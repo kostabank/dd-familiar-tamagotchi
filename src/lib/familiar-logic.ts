@@ -185,6 +185,7 @@ export function toFamiliarDTO(f: {
   lastTick: Date | string;
   coins: number;
   accentColor?: string | null;
+  bio?: string | null;
 }): FamiliarDTO {
   return {
     id: f.id,
@@ -204,6 +205,7 @@ export function toFamiliarDTO(f: {
     lastTick: f.lastTick instanceof Date ? f.lastTick.toISOString() : f.lastTick,
     coins: f.coins,
     accentColor: f.accentColor ?? null,
+    bio: f.bio ?? null,
     state: deriveState(f),
   };
 }

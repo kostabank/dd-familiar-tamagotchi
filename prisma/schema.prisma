@@ -44,6 +44,7 @@ model Familiar {
   lastTick       DateTime @default(now())
   coins          Int      @default(50)
   accentColor    String?  // custom accent color (hex), unlockable after Stage 2
+  bio            String?  // player-written familiar backstory (max 500 chars)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
