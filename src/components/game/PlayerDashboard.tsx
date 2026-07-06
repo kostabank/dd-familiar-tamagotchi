@@ -25,6 +25,7 @@ import { MobilePanelsDrawer } from './MobilePanelsDrawer';
 import { LeaderboardPanel } from './LeaderboardPanel';
 import { FamiliarProfileModal } from './FamiliarProfileModal';
 import { NotificationFeed } from './NotificationFeed';
+import { MusicTrackSelector } from './MusicTrackSelector';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
@@ -82,6 +83,7 @@ export function PlayerDashboard() {
           </div>
           <div className="flex items-center gap-3">
             <LiveClock />
+            <MusicTrackSelector />
             <SoundToggle />
             <Badge variant="outline" className="border-amber-400/40 text-amber-400">
               <Coins className="h-3 w-3 mr-1" /> {fam.coins}

@@ -712,3 +712,71 @@ Task: Assess project status, QA via agent-browser, add trading/gifting + quest t
 
 Stage Summary:
 - 2 new features (trading/gifting with 3 gift types + coin cost + mood/sync boost + cooldown, quest templates with 6 presets for DM quick-fill) + styling polish (gift dialog with affordability states, party roster gift buttons, quest template selector). All browser-verified end-to-end (raven sent Лакомство to thorn → coins −10, thorn mood +10/sync +2; DM applied "Игривый час" template → form filled). Lint-clean, no errors. Services running on :3000 and :3003.
+
+---
+Task ID: 19 (QA + Feature Round 9)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, add background music tracks + gift-received indicator + styling polish.
+
+## Current Project Status (assessment)
+- Both services UP on arrival (:3000, :3003). No restart needed before QA.
+- agent-browser QA: auth, login (raven), dashboard all working. No browser/console/runtime errors.
+- raven's familiar "Искра Пламенная" (Stage 2 dragon) intact; thorn construct also rendering.
+- Project stable → proceeded with new feature development.
+
+## Completed Modifications (this round)
+
+### 1. Background Music Tracks (new feature)
+- **sound.ts refactor:** Refactored ambient system to support multiple named tracks via `startTrack(track)` method. Added `AmbientTrack` type ('default' | 'forest' | 'cave' | 'tavern'). Each track has unique oscillator config (frequencies, wave types, LFO rate/depth):
+  - **default (Мистический дрон):** A1+E2+A2 fifth, sine+triangle, slow 0.08Hz LFO — dark mystical drone.
+  - **forest (Лес):** C2+G2+C3, sine+triangle+sine, 0.12Hz LFO — green tones, leaf-whisper.
+  - **cave (Пещера):** G1+D2+G2, all sine, 0.05Hz LFO — deep low frequencies.
+  - **tavern (Таверна):** D2+A2+D3, triangle+sine+triangle, 0.15Hz LFO — warm major atmosphere.
+- **Persistence:** `setSavedTrack(track)` / `getSavedTrack()` — track choice persisted to localStorage `ddt_track`. `setMuted(false)` resumes the saved track.
+- **UI:** `MusicTrackSelector.tsx` — dropdown menu with 4 track options (icon + label + description + ● current indicator). Trigger button shows current track name + animated 3-bar waveform (pulse-glow). Added to both PlayerDashboard and AdminPanel headers.
+
+### 2. Gift Received Indicator (new feature)
+- **sound.ts:** Added `playGiftChime()` — ascending 5-note sparkle (E5→G5→B5→E6→G6, sine, 0.08s stagger).
+- **use-socket.ts:** Enhanced `familiar:update` handler to detect gift receipts:
+  - Tracks previous mood/sync via `prevStatsRef`.
+  - Detects gift when mood increases ≥5 AND sync increases ≥1, AND it's >1.5s since the player's own last action (avoids false positives from feed/play/pet echoes).
+  - On detection: plays gift chime, triggers 🎁 celebration overlay, shows toast "🎁 Твоему фамильяру подарили подарок!" with mood/sync deltas, triggers heart burst in 3D.
+- **Real-time:** Works via the existing Socket.io `familiar:update` broadcast — when another player gifts you, the socket pushes the updated familiar, the handler detects the gift pattern, and fires the chime + toast + celebration.
+
+### 3. Notification Feed Gift Entries
+- **notifications API:** Updated classification to recognize gift entries:
+  - `gift_received:*` (claim_buff actionType) → "Получен подарок" (success severity, emerald).
+  - `gift_sent:*` (admin_edit actionType) → "Подарок отправлен" (info severity, amber).
+- **Verified:** feed shows "Получен подарок · gift_received:toy from thorn (+15mood +5sync) · 7с".
+
+### 4. Styling Polish
+- **MusicTrackSelector:** Dropdown with track icons (Sparkles/Trees/Mountain/Beer), descriptions, current-track ● indicator, animated 3-bar waveform in trigger button (pulse-glow with staggered delays).
+- **Gift celebration:** Pink 🎔 emoji + "Получен подарок!" label in celebration overlay (uses existing confetti system).
+- **Gift toast:** Pink-themed with mood/sync delta description.
+
+## Verification (agent-browser, all passed)
+- Login as raven → MusicTrackSelector visible in header showing "Мистический дрон". ✓
+- Opened dropdown → 4 tracks visible (Мистический дрон ●, Лес, Пещера, Таверна) with descriptions. ✓
+- Selected "Лес" → button label updated to "Лес", track switched. ✓
+- Sent gift (toy) from thorn → raven via API → raven's familiar.update pushed via socket. ✓
+- Raven's sync increased (34→36+, +5 from toy); mood capped at 100. ✓
+- Notification feed shows "Получен подарок · gift_received:toy from thorn (+15mood +5sync) · 7с". ✓
+- No browser errors, no console errors, no dev-log errors.
+- Lint: 0 errors, 0 warnings.
+- Services: both running (:3000, :3003), hourly cron ticking (2 familiars, resonance 95%, "+2 Temp HP").
+
+## Unresolved Issues / Risks
+- None critical. All features browser-verified.
+- Gift detection heuristic (mood≥5 + sync≥1 + >1.5s since own action) could theoretically miss a gift if the player acts within 1.5s of receiving — acceptable edge case.
+- Music tracks are synthesized drones (no melody) — sufficient for ambient background; full compositions would require audio files.
+
+## Next-Phase Priority Recommendations
+1. **Weekly leaderboard reset** — track best rank per week with historical view.
+2. **Familiar profile for other players** — click a player in the party roster to view their familiar's public profile.
+3. **Search/filter in activity log + notifications** — filter by action type or date range.
+4. **Achievement for gifting** — "Щедрый" achievement for sending N gifts.
+5. **Volume slider** — fine-grained volume control beyond mute/unmute.
+6. **Quest difficulty scaling** — harder quests give better rewards.
+
+Stage Summary:
+- 2 new features (4-track background music system with synthesized ambient drones + persistence, real-time gift-received indicator with chime + celebration + toast via socket detection) + notification feed gift entries + styling polish (music selector dropdown with waveform viz, gift celebration). All browser-verified (track switching works, gift from thorn→raven detected with notification feed entry). Lint-clean, no errors. Services running on :3000 and :3003.

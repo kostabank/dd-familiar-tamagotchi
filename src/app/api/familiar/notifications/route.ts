@@ -35,6 +35,9 @@ export async function GET() {
         } else if (l.detail?.startsWith('achievement_reward')) {
           severity = 'success';
           label = 'Награда за достижение';
+        } else if (l.detail?.startsWith('gift_received')) {
+          severity = 'success';
+          label = 'Получен подарок';
         } else {
           severity = 'info';
           label = 'Бафф дня';
@@ -43,8 +46,13 @@ export async function GET() {
         severity = 'event';
         label = l.detail?.includes('storm') ? 'Магическая Буря' : l.detail?.includes('festival') ? 'Праздник' : 'Событие';
       } else if (l.actionType === 'admin_edit') {
-        severity = 'warning';
-        label = 'Вмешательство Мастера';
+        if (l.detail?.startsWith('gift_sent')) {
+          severity = 'info';
+          label = 'Подарок отправлен';
+        } else {
+          severity = 'warning';
+          label = 'Вмешательство Мастера';
+        }
       }
       return {
         id: l.id,

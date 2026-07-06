@@ -6,6 +6,8 @@
  * All sounds are short, pleasant, dark-fantasy flavored tones.
  */
 
+export type AmbientTrack = 'default' | 'forest' | 'cave' | 'tavern';
+
 type SfxName =
   | 'feed'
   | 'play'
@@ -65,8 +67,22 @@ class SoundManager {
     if (muted) {
       this.stopAmbient();
     } else {
-      this.startAmbient();
+      // Resume the saved track or default.
+      const saved = this.getSavedTrack();
+      this.startTrack(saved);
     }
+  }
+
+  /** Persist the selected track to localStorage. */
+  setSavedTrack(track: AmbientTrack): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ddt_track', track);
+    }
+  }
+
+  getSavedTrack(): AmbientTrack {
+    if (typeof window === 'undefined') return 'default';
+    return (localStorage.getItem('ddt_track') as AmbientTrack) || 'default';
   }
 
   toggleMuted(): boolean {
@@ -118,7 +134,23 @@ class SoundManager {
 
   /** Start a low ambient drone (two detuned oscillators + slow LFO). */
   startAmbient(): void {
-    if (this.muted || this.ambientPlaying) return;
+    this.startTrack('default');
+  }
+
+  /** Switch to a named ambient track. Stops the current one first. */
+  startTrack(track: AmbientTrack): void {
+    if (this.muted) return;
+    // If already playing this track, do nothing.
+    if (this.ambientPlaying && this.currentTrack === track) return;
+    // Stop current.
+    this.stopAmbient();
+    this.currentTrack = track;
+    this._startTrackNodes(track);
+  }
+
+  private currentTrack: AmbientTrack | null = null;
+
+  private _startTrackNodes(track: AmbientTrack): void {
     const ctx = this.ensureCtx();
     if (!ctx || !this.masterGain) return;
     this.ambientPlaying = true;
@@ -128,12 +160,19 @@ class SoundManager {
     this.ambientGain.gain.setTargetAtTime(0.08, ctx.currentTime, 2);
     this.ambientGain.connect(this.masterGain);
 
-    // Two detuned low oscillators for a rich drone.
-    const freqs = [55, 82.5, 110]; // A1, E2, A2 — dark fifth
-    freqs.forEach((f, i) => {
+    // Track-specific oscillator configs.
+    const TRACKS: Record<AmbientTrack, { freqs: number[]; types: OscillatorType[]; lfoFreq: number; lfoDepth: number }> = {
+      default: { freqs: [55, 82.5, 110], types: ['sine', 'triangle', 'triangle'], lfoFreq: 0.08, lfoDepth: 0.03 },
+      forest: { freqs: [65.4, 98, 130.8], types: ['sine', 'triangle', 'sine'], lfoFreq: 0.12, lfoDepth: 0.04 },
+      cave: { freqs: [49, 73.4, 98], types: ['sine', 'sine', 'triangle'], lfoFreq: 0.05, lfoDepth: 0.05 },
+      tavern: { freqs: [73.4, 110, 146.8], types: ['triangle', 'sine', 'triangle'], lfoFreq: 0.15, lfoDepth: 0.035 },
+    };
+    const cfg = TRACKS[track] || TRACKS.default;
+
+    cfg.freqs.forEach((f, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = i === 0 ? 'sine' : 'triangle';
+      osc.type = cfg.types[i] || 'sine';
       osc.frequency.value = f;
       osc.detune.value = (i - 1) * 5;
       gain.gain.value = i === 0 ? 0.6 : 0.3;
@@ -146,17 +185,23 @@ class SoundManager {
     // Slow LFO on the master ambient gain for a breathing effect.
     const lfo = ctx.createOscillator();
     const lfoGain = ctx.createGain();
-    lfo.frequency.value = 0.08; // ~12s cycle
-    lfoGain.gain.value = 0.03;
+    lfo.frequency.value = cfg.lfoFreq;
+    lfoGain.gain.value = cfg.lfoDepth;
     lfo.connect(lfoGain);
     lfoGain.connect(this.ambientGain.gain);
     lfo.start();
     this.ambientNodes.push({ osc: lfo, gain: lfoGain });
   }
 
+  /** Returns the currently playing track (or null). */
+  getCurrentTrack(): AmbientTrack | null {
+    return this.currentTrack;
+  }
+
   stopAmbient(): void {
     if (!this.ambientPlaying) return;
     this.ambientPlaying = false;
+    this.currentTrack = null;
     const ctx = this.ctx;
     if (ctx && this.ambientGain) {
       this.ambientGain.gain.setTargetAtTime(0, ctx.currentTime, 0.5);
@@ -169,6 +214,29 @@ class SoundManager {
       this.ambientNodes = [];
       this.ambientGain = null;
     }, 800);
+  }
+
+  /** Play a short gift-received chime (ascending sparkle). */
+  playGiftChime(): void {
+    if (this.muted) return;
+    const ctx = this.ensureCtx();
+    if (!ctx || !this.masterGain) return;
+    const now = ctx.currentTime;
+    const notes = [659, 784, 988, 1319, 1568]; // E5 G5 B5 E6 G6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = now + i * 0.08;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.15, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+      osc.connect(gain);
+      gain.connect(this.masterGain!);
+      osc.start(start);
+      osc.stop(start + 0.45);
+    });
   }
 }
 
