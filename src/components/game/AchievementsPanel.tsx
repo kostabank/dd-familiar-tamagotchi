@@ -28,6 +28,7 @@ const METRIC_LABELS: Record<string, string> = {
   pet_count: 'Ласки',
   streak_days: 'Дни подряд',
   stage: 'Стадия',
+  gift_count: 'Подарки',
 };
 
 export function AchievementsPanel() {

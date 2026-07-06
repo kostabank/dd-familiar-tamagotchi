@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { sound } from '@/lib/sound';
 import { GIFT_TYPES } from '@/lib/constants';
 import type { GiftType } from '@/lib/constants';
+import type { AchievementDTO } from '@/lib/familiar-logic';
 import { Gift, Coins, Heart, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -47,6 +48,17 @@ export function GiftDialog({ open, onClose, toUsername, toCharacterName, toUserI
       }
       setFamiliar(data.familiar);
       sound.play('quest');
+      // Announce achievement unlocks if any.
+      if (data.newAchievements?.length > 0) {
+        for (const a of data.newAchievements as AchievementDTO[]) {
+          const reward = a.tier === 'gold' ? 150 : a.tier === 'silver' ? 50 : 20;
+          sound.play('achievement');
+          toast.success(`🏆 Достижение: ${a.title}`, {
+            description: `${a.icon} ${a.description} · +${reward} монет`,
+            duration: 6000,
+          });
+        }
+      }
       toast.success(`Подарок отправлен: ${selected.emoji} ${selected.label} → ${data.gift.recipientUsername}`, {
         description: `−${selected.coinCost} монет, +${selected.moodBoost} настроения получателю`,
       });

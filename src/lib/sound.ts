@@ -29,10 +29,12 @@ class SoundManager {
   private ambientNodes: { osc: OscillatorNode; gain: GainNode }[] = [];
   private ambientPlaying = false;
   muted = false;
+  volume = 70;
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.muted = localStorage.getItem(STORAGE_KEY) === '1';
+      this.volume = Number(localStorage.getItem('ddt_volume')) || 70;
     }
   }
 
@@ -43,7 +45,7 @@ class SoundManager {
         const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         this.ctx = new AC();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = this.muted ? 0 : 0.5;
+        this.masterGain.gain.value = this.muted ? 0 : (this.volume / 100) * 0.5;
         this.masterGain.connect(this.ctx.destination);
       } catch {
         return null;
@@ -62,7 +64,7 @@ class SoundManager {
       localStorage.setItem(STORAGE_KEY, muted ? '1' : '0');
     }
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setTargetAtTime(muted ? 0 : 0.5, this.ctx.currentTime, 0.05);
+      this.masterGain.gain.setTargetAtTime(muted ? 0 : (this.volume / 100) * 0.5, this.ctx.currentTime, 0.05);
     }
     if (muted) {
       this.stopAmbient();
@@ -83,6 +85,23 @@ class SoundManager {
   getSavedTrack(): AmbientTrack {
     if (typeof window === 'undefined') return 'default';
     return (localStorage.getItem('ddt_track') as AmbientTrack) || 'default';
+  }
+
+  /** Set master volume (0-100). Persists to localStorage. */
+  setVolume(vol: number): void {
+    const v = Math.max(0, Math.min(100, vol));
+    this.volume = v;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ddt_volume', String(v));
+    }
+    if (this.masterGain && this.ctx && !this.muted) {
+      this.masterGain.gain.setTargetAtTime(v / 100 * 0.5, this.ctx.currentTime, 0.05);
+    }
+  }
+
+  getVolume(): number {
+    if (typeof window === 'undefined') return 70;
+    return Number(localStorage.getItem('ddt_volume')) || 70;
   }
 
   toggleMuted(): boolean {

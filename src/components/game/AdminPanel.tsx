@@ -17,6 +17,7 @@ import { AmbientBackground } from './AmbientBackground';
 import { DmQuestPanel } from './DmQuestPanel';
 import { SoundToggle } from './SoundToggle';
 import { MusicTrackSelector } from './MusicTrackSelector';
+import { VolumeControl } from './VolumeControl';
 
 export function AdminPanel() {
   const { doLogout } = useAuth();
@@ -108,7 +109,7 @@ export function AdminPanel() {
           <div className="flex items-center gap-2">
             <LiveClock />
             <MusicTrackSelector />
-            <SoundToggle />
+            <VolumeControl />
             <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Обновить
             </Button>

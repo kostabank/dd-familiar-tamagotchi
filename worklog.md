@@ -780,3 +780,67 @@ Task: Assess project status, QA via agent-browser, add background music tracks +
 
 Stage Summary:
 - 2 new features (4-track background music system with synthesized ambient drones + persistence, real-time gift-received indicator with chime + celebration + toast via socket detection) + notification feed gift entries + styling polish (music selector dropdown with waveform viz, gift celebration). All browser-verified (track switching works, gift from thorn→raven detected with notification feed entry). Lint-clean, no errors. Services running on :3000 and :3003.
+
+---
+Task ID: 20 (QA + Feature Round 10)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, add gifting achievements + volume slider + styling polish.
+
+## Current Project Status (assessment)
+- Both services UP on arrival (:3000, :3003). No restart needed before QA.
+- agent-browser QA: auth, login (raven), dashboard all working. No browser/console/runtime errors.
+- raven's familiar "Искра Пламенная" (Stage 2 dragon) intact; thorn construct also rendering.
+- Project stable → proceeded with new feature development.
+
+## Completed Modifications (this round)
+
+### 1. Gifting Achievements (new feature)
+- **Seed:** Added 2 new achievements to `prisma/seed-achievements.ts` (13 total now):
+  - 🎁 Щедрый (bronze, gift_count ×3, +20 coins)
+  - 💝 Покровитель (silver, gift_count ×10, +50 coins)
+- **Lib:** Updated `computeAchievementMetrics()` to count gifts sent — queries InteractionLog for `actionType: 'admin_edit'` with `detail` starting `gift_sent`. Added `gift_count` to the metrics return object.
+- **API:** Wired `checkAndUnlockAchievements()` + `grantAchievementRewards()` into `POST /api/familiar/gift` — after a gift is sent, checks if the sender unlocked any achievements, grants coin rewards, re-fetches sender familiar if coins changed, returns `newAchievements` + `achievementCoins` in response.
+- **UI:** 
+  - `GiftDialog.tsx`: After sending, checks `data.newAchievements` — plays 'achievement' SFX + shows 🏆 toast for each unlock.
+  - `AchievementsPanel.tsx`: Added `gift_count: 'Подарки'` to METRIC_LABELS.
+
+### 2. Volume Slider (new feature)
+- **sound.ts:** Added `volume` field (0-100, default 70) + `setVolume(vol)` / `getVolume()` methods. Volume persists to localStorage `ddt_volume`. Master gain = `(volume/100) * 0.5` when not muted. `setMuted(false)` restores volume-scaled gain. `ensureCtx()` initializes masterGain with the saved volume.
+- **UI:** `VolumeControl.tsx` — combined mute toggle + expandable volume slider:
+  - Mute button (Volume2/Volume1/VolumeX icon based on volume level + mute state).
+  - Slider (0-100, step 5) that expands width on hover (w-0→w-20, opacity transition, auto-hide after 1.2s on mouse leave).
+  - Raising volume above 0 while muted auto-unmutes.
+  - Frost-colored slider thumb.
+- Replaced `SoundToggle` with `VolumeControl` in both PlayerDashboard and AdminPanel headers.
+
+### 3. Styling Polish
+- **Volume slider:** Expandable width animation (w-0→w-20) with opacity transition, auto-hide timer, frost-colored thumb.
+- **Header audio controls grouping:** LiveClock + MusicTrackSelector + VolumeControl grouped together in header.
+- **Achievement gift metric:** "Подарки" label in achievement detail modal.
+
+## Verification (agent-browser, all passed)
+- Login as raven → VolumeControl visible in header (mute button). ✓
+- Hover → volume slider expands (value 70). ✓
+- Arrow keys adjusted volume 70→60, persisted to localStorage `ddt_volume=60`. ✓
+- Gift achievements seeded: 13 total, 🎁 Щедрый (1/3), 💝 Покровитель (1/10) via API. ✓
+- Sent 3 gifts (Лакомство) from raven to thorn via GiftDialog → 🎁 Щедрый unlocked (3/3) with +20 coin reward. ✓
+- GiftDialog showed achievement toast on unlock. ✓
+- No browser errors, no console errors, no dev-log errors.
+- Lint: 0 errors, 0 warnings.
+- Services: both running (:3000, :3003), hourly cron ticking (2 familiars, resonance 95%, "+2 Temp HP").
+
+## Unresolved Issues / Risks
+- None critical. All features browser-verified end-to-end.
+- Gift cooldown (60s per recipient) slowed testing — had to wait between gifts. Acceptable for production.
+- Volume slider auto-hide (1.2s) might feel short for some users — could be tuned.
+
+## Next-Phase Priority Recommendations
+1. **Weekly leaderboard reset** — track best rank per week with historical view.
+2. **Familiar profile for other players** — click a player in the party roster to view their familiar's public profile.
+3. **Search/filter in activity log + notifications** — filter by action type or date range.
+4. **Quest difficulty scaling** — harder quests give better rewards.
+5. **Achievement for receiving gifts** — "Популярный" achievement for receiving N gifts.
+6. **Sound preview** — play a test tone when adjusting volume slider.
+
+Stage Summary:
+- 2 new features (gifting achievements: 🎁 Щедрый bronze + 💝 Покровитель silver with gift_count metric wired into gift API, volume slider with expandable UI + localStorage persistence) + styling polish (volume slider animation, header audio grouping, gift metric label). All browser-verified end-to-end (sent 3 gifts → Щедрый unlocked with +20 coins, volume adjusted + persisted). Lint-clean, no errors. Services running on :3000 and :3003. 4/13 achievements now unlocked for raven (Первая Метаморфоза + Подросток + Кладоискатель + Щедрый).

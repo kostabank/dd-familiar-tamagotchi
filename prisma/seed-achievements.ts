@@ -17,6 +17,9 @@ const achievements = [
   // Streak (consecutive MSK days with at least one action)
   { code: 'streak_3', title: 'Постоянство', description: 'Активен 3 дня подряд (МСК)', icon: '🔥', tier: 'bronze', goal: 3, metric: 'streak_days' },
   { code: 'streak_7', title: 'Недельный Ритуал', description: 'Активен 7 дней подряд (МСК)', icon: '⚡', tier: 'silver', goal: 7, metric: 'streak_days' },
+  // Gifting
+  { code: 'generous', title: 'Щедрый', description: 'Отправь 3 подарка другим игрокам', icon: '🎁', tier: 'bronze', goal: 3, metric: 'gift_count' },
+  { code: 'patron', title: 'Покровитель', description: 'Отправь 10 подарков другим игрокам', icon: '💝', tier: 'silver', goal: 10, metric: 'gift_count' },
 ];
 
 async function main() {

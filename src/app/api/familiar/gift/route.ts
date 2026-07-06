@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { recomputeAndPersist, toFamiliarDTO, computePartyResonance } from '@/lib/familiar-logic';
+import {
+  recomputeAndPersist, toFamiliarDTO, computePartyResonance,
+  checkAndUnlockAchievements, grantAchievementRewards,
+} from '@/lib/familiar-logic';
 import { GIFT_TYPES, GAME, clamp } from '@/lib/constants';
 import { broadcastFamiliarUpdate, broadcastPartyResonance } from '@/lib/socket-client';
 
@@ -105,16 +108,26 @@ export async function POST(req: NextRequest) {
     // Broadcast updates.
     const senderDto = toFamiliarDTO(updatedSender);
     const recipientDto = toFamiliarDTO(updatedRecipient);
-    await broadcastFamiliarUpdate(senderDto);
+
+    // Check achievement unlocks for sender (gift_count metric).
+    const newlyUnlocked = await checkAndUnlockAchievements(me.id);
+    const rewardCoins = await grantAchievementRewards(me.id, newlyUnlocked);
+    // Re-fetch sender if achievement rewards changed coins.
+    const finalSenderFam = rewardCoins > 0 ? await db.familiar.findUnique({ where: { userId: me.id } }) : updatedSender;
+    const finalSenderDto = rewardCoins > 0 ? toFamiliarDTO(finalSenderFam!) : senderDto;
+
+    await broadcastFamiliarUpdate(finalSenderDto);
     await broadcastFamiliarUpdate(recipientDto);
     await broadcastPartyResonance(await computePartyResonance());
 
     return NextResponse.json({
-      familiar: senderDto,
+      familiar: finalSenderDto,
       gift: {
         type: gift,
         recipientUsername: (await db.user.findUnique({ where: { id: toUserId }, select: { username: true } }))?.username,
       },
+      newAchievements: newlyUnlocked,
+      achievementCoins: rewardCoins,
     });
   } catch (e) {
     console.error('[familiar/gift]', e);

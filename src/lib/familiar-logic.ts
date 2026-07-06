@@ -319,7 +319,7 @@ export interface AchievementDTO {
 export async function computeAchievementMetrics(userId: string): Promise<Record<string, number>> {
   const familiar = await db.familiar.findUnique({ where: { userId } });
   if (!familiar) {
-    return { evolutions: 0, coins: 0, play_count: 0, feed_count: 0, pet_count: 0, streak_days: 0, stage: 0 };
+    return { evolutions: 0, coins: 0, play_count: 0, feed_count: 0, pet_count: 0, streak_days: 0, stage: 0, gift_count: 0 };
   }
   // Count action logs by type.
   const logs = await db.interactionLog.groupBy({
@@ -333,6 +333,11 @@ export async function computeAchievementMetrics(userId: string): Promise<Record<
     where: { userId, actionType: 'evolve', detail: { contains: '->' } },
   });
   const evolutions = evolveLogs.length;
+  // Gifts sent = count of admin_edit logs with detail starting 'gift_sent'.
+  const giftLogs = await db.interactionLog.findMany({
+    where: { userId, actionType: 'admin_edit', detail: { startsWith: 'gift_sent' } },
+  });
+  const gift_count = giftLogs.length;
   const streak = await computeStreakDays(userId);
   return {
     evolutions,
@@ -342,6 +347,7 @@ export async function computeAchievementMetrics(userId: string): Promise<Record<
     pet_count: countBy('pet'),
     streak_days: streak,
     stage: familiar.stage,
+    gift_count,
   };
 }
 
