@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,8 @@ import { CustomizePanel } from './CustomizePanel';
 import { CelebrationOverlay } from './CelebrationOverlay';
 import { MobilePanelsDrawer } from './MobilePanelsDrawer';
 import { LeaderboardPanel } from './LeaderboardPanel';
+import { FamiliarProfileModal } from './FamiliarProfileModal';
+import { NotificationFeed } from './NotificationFeed';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
@@ -35,6 +37,7 @@ export function PlayerDashboard() {
   const { doLogout: logout } = useAuth();
   useSocket();
   const fam = useStore((s) => s.familiar) ?? familiar;
+  const [showProfile, setShowProfile] = useState(false);
 
   // Periodic refresh as a fallback to socket updates.
   useEffect(() => {
@@ -149,7 +152,13 @@ export function PlayerDashboard() {
               <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 pointer-events-none">
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-muted-foreground">Имя фамильяра</div>
-                  <div className="text-lg font-semibold text-glow-arcane truncate">{fam.name}</div>
+                  <button
+                    onClick={() => setShowProfile(true)}
+                    className="text-lg font-semibold text-glow-arcane truncate hover:underline decoration-arcane/50 underline-offset-4 cursor-pointer pointer-events-auto text-left"
+                    title="Открыть профиль"
+                  >
+                    {fam.name}
+                  </button>
                   {fam.bio && (
                     <p className="text-[10px] text-muted-foreground/80 italic line-clamp-2 mt-0.5 max-w-xs">{fam.bio}</p>
                   )}
@@ -206,6 +215,7 @@ export function PlayerDashboard() {
             {/* Secondary panels — hidden on mobile, available in the drawer */}
             <div className="hidden lg:block space-y-3 md:space-y-4">
               <LeaderboardPanel />
+              <NotificationFeed />
               <BuffsPanel />
               <AchievementsPanel />
               <CustomizePanel />
@@ -235,6 +245,7 @@ export function PlayerDashboard() {
 
       <MiniGame />
       <EvolutionModal />
+      <FamiliarProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
       <CelebrationOverlay celebration={celebration} />
     </div>
   );

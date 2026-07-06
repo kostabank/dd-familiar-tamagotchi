@@ -576,3 +576,73 @@ Task: Assess project status, QA via agent-browser, add leaderboard + familiar bi
 
 Stage Summary:
 - 2 new features (leaderboard with rank medals + composite scoring, familiar bio/lore with editable text + character counter + canvas overlay display) + styling polish (rank medals, bio card hover, canvas bio display). All browser-verified (leaderboard ranks correct, bio saved + displayed on canvas). Lint-clean, no errors. Services running on :3000 and :3003.
+
+---
+Task ID: 17 (QA + Feature Round 7)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, add familiar profile modal + notification feed + styling polish.
+
+## Current Project Status (assessment)
+- Both services UP on arrival (:3000, :3003). No restart needed before QA.
+- agent-browser QA: auth, login (raven), dashboard all working. No browser/console/runtime errors.
+- raven's familiar "Искра Пламенная" (Stage 2 dragon with bio) intact from last round.
+- Project stable → proceeded with new feature development.
+
+## Completed Modifications (this round)
+
+### 1. Familiar Profile Modal (new feature)
+- **API:** `GET /api/familiar/profile` — returns full profile: familiar DTO + species info + achievements summary (unlockedCount, total, 4 recent) + recent 8 logs + evolution history (all 'evolve' logs with '->' in detail) + creation date.
+- **UI:** `FamiliarProfileModal.tsx`:
+  - Header: species emoji in accent-colored tile + familiar name + species label + stage + close button.
+  - Bio section (if set): full text in bordered card.
+  - Stats grid (2-3 cols): 6 StatTiles with color-coded values (red<30, amber<60, green≥60) for energy/mood/fatigue/health/sync/coins.
+  - Evolution + buff card: path name + hidden buff.
+  - Achievements card: unlockedCount/total + 4 recent unlocked icons.
+  - Creation date card with full MSK timestamp.
+  - Evolution history list: each evolution with detail + timestamp.
+  - Recent activity list: 8 logs with action-type labels + details + timestamps.
+  - Scrollable (max-h-90vh).
+- **Wiring:** Familiar name on canvas overlay is now a clickable button (hover:underline + cursor-pointer + title="Открыть профиль") that opens the modal. Added `showProfile` state to PlayerDashboard.
+
+### 2. Notification Feed (new feature)
+- **API:** `GET /api/familiar/notifications` — returns up to 12 recent significant events (evolutions, claim_buff, event, admin_edit) classified by severity:
+  - `success` (emerald): Эволюция, Квест выполнен, Награда за достижение
+  - `info` (amber-300): Бафф дня
+  - `warning` (amber-400): Вмешательство Мастера
+  - `event` (red-400): Магическая Буря / Праздник
+- **UI:** `NotificationFeed.tsx`:
+  - Scrollable list (h-48) with left-border-colored cards per severity.
+  - Each notification: severity icon + label + detail (truncated) + relative timestamp (с/м/ч/д).
+  - Auto-refreshes every 15s + on familiar state changes.
+  - Empty state with Bell icon.
+- Added to PlayerDashboard secondary panels (after LeaderboardPanel) + MobilePanelsDrawer.
+
+### 3. Styling Polish
+- **Profile modal species-themed header:** emoji tile uses accent color (familiar.accentColor or species accent) at 25% opacity with 50% border.
+- **Profile stat tiles:** color-coded values (red/amber/green by threshold) with large font-mono tabular-nums.
+- **Notification severity colors:** left-border (2px) + icon color per severity (emerald/amber/red).
+- **Canvas name click affordance:** familiar name is now a button with hover:underline + decoration-arcane/50 + underline-offset-4 + title tooltip.
+
+## Verification (agent-browser, all passed)
+- Login as raven → dashboard renders. ✓
+- Clicked familiar name "Искра Пламенная" on canvas → profile modal opened with: bio text, 6-stat grid (energy 100, mood 100, fatigue 95, health 100, sync 34, coins 92), evolution path "Изумрудный" + buff, achievements 3/11 with icons 🥚⭐💰, creation date "06 июля 2026 г. в 22:39 МСК", evolution history "1->2 path=Изумрудный". ✓
+- NotificationFeed: shows 7 notifications with severity colors — Вмешательство Мастера (22м), Квест выполнен (32м), Бафф дня ×2 (44м/58м), Эволюция (2ч), and more. ✓
+- No browser errors, no console errors, no dev-log errors.
+- Lint: 0 errors, 0 warnings.
+- Services: both running (:3000, :3003), hourly cron ticking (2 familiars, resonance 90%, "+2 Temp HP").
+
+## Unresolved Issues / Risks
+- None critical. All features browser-verified.
+- Notification feed pulls from InteractionLog which is already populated by all actions — no new DB writes needed. The feed auto-refreshes every 15s.
+- Profile modal fetches on open (not cached) — acceptable for a modal that opens on demand.
+
+## Next-Phase Priority Recommendations
+1. **Trading/gifting** — spend coins to send a mood/sync boost to a party member (new API + UI).
+2. **Quest templates** — DM can pick from preset quest templates instead of writing from scratch.
+3. **Background music tracks** — multiple ambient tracks (forest/cave/tavern) selectable from a menu.
+4. **Weekly leaderboard reset** — track best rank per week with historical view.
+5. **Familiar profile for other players** — click a player in the party roster to view their familiar's public profile.
+6. **Search/filter in activity log + notifications** — filter by action type or date range.
+
+Stage Summary:
+- 2 new features (familiar profile modal with bio/stats/evolution history/achievements/creation date, persistent notification feed with severity-colored events) + styling polish (species-themed profile header, color-coded stat tiles, severity-colored notification borders, canvas name click affordance). All browser-verified (profile modal opens with full data, notification feed shows 7 events with correct severities). Lint-clean, no errors. Services running on :3000 and :3003.

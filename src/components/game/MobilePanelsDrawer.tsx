@@ -9,6 +9,7 @@ import { CustomizePanel } from './CustomizePanel';
 import { ActivityLogPanel } from './ActivityLogPanel';
 import { PartyRosterSidebar } from './PartyRosterSidebar';
 import { LeaderboardPanel } from './LeaderboardPanel';
+import { NotificationFeed } from './NotificationFeed';
 import { Layers, X } from 'lucide-react';
 
 /**
@@ -47,6 +48,7 @@ export function MobilePanelsDrawer() {
         </DrawerHeader>
         <div className="overflow-y-auto fantasy-scroll px-4 pb-6 space-y-3" style={{ maxHeight: 'calc(85vh - 60px)' }}>
           <LeaderboardPanel />
+          <NotificationFeed />
           <BuffsPanel />
           <AchievementsPanel />
           <CustomizePanel />
