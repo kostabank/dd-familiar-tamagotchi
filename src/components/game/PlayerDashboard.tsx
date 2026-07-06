@@ -21,6 +21,7 @@ import { AmbientBackground } from './AmbientBackground';
 import { SoundToggle } from './SoundToggle';
 import { CustomizePanel } from './CustomizePanel';
 import { CelebrationOverlay } from './CelebrationOverlay';
+import { MobilePanelsDrawer } from './MobilePanelsDrawer';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
@@ -100,7 +101,14 @@ export function PlayerDashboard() {
 
           {/* 3D Canvas */}
           <section className="lg:col-span-3 xl:col-span-3 order-1 xl:order-2">
-            <div className="relative rounded-2xl overflow-hidden border border-arcane/20 bg-gradient-to-b from-[#0a0a1a] to-[#15152a] arcane-border scanlines" style={{ height: 'clamp(340px, 52vh, 580px)' }}>
+            <div
+              className="relative rounded-2xl overflow-hidden border-2 bg-gradient-to-b from-[#0a0a1a] to-[#15152a] scanlines"
+              style={{
+                height: 'clamp(340px, 52vh, 580px)',
+                borderColor: `${SPECIES_INFO[fam.species].accent}40`,
+                boxShadow: `inset 0 0 24px -8px ${SPECIES_INFO[fam.species].accent}40, 0 0 24px -8px ${SPECIES_INFO[fam.species].accent}30`,
+              }}
+            >
               <FamiliarCanvas
                 species={fam.species}
                 stage={fam.stage}
@@ -108,6 +116,10 @@ export function PlayerDashboard() {
                 evolving={evolving}
                 onEvolutionComplete={() => useStore.getState().setEvolving(false)}
                 petTrigger={petEffect}
+                modelConfigOverride={fam.accentColor ? {
+                  emissiveColor: fam.accentColor,
+                  accentColor: fam.accentColor,
+                } : undefined}
                 thoughts={{
                   energy: fam.energy,
                   mood: fam.mood,
@@ -172,7 +184,7 @@ export function PlayerDashboard() {
             </Card>
           </section>
 
-          {/* Right panels */}
+          {/* Right panels — primary always visible; secondary hidden on mobile (in drawer) */}
           <section className="lg:col-span-2 xl:col-span-1 order-2 xl:order-3 space-y-3 md:space-y-4">
             <Card className="arcane-border">
               <CardHeader className="pb-3">
@@ -187,17 +199,23 @@ export function PlayerDashboard() {
 
             <DailyBuffPanel />
             <QuestTrackerPanel />
-            <BuffsPanel />
-            <AchievementsPanel />
-            <CustomizePanel />
-            <ActivityLogPanel />
+            {/* Secondary panels — hidden on mobile, available in the drawer */}
+            <div className="hidden lg:block space-y-3 md:space-y-4">
+              <BuffsPanel />
+              <AchievementsPanel />
+              <CustomizePanel />
+              <ActivityLogPanel />
+            </div>
 
             {/* Mobile: show party roster inline at the bottom */}
-            <div className="xl:hidden">
+            <div className="xl:hidden hidden lg:block">
               <PartyRosterSidebar />
             </div>
           </section>
         </div>
+
+        {/* Mobile floating drawer for secondary panels */}
+        <MobilePanelsDrawer />
       </main>
 
       {/* Footer */}

@@ -49,7 +49,7 @@ export function StatBar({
   }, [value]);
 
   return (
-    <div className={cn('w-full', compact ? 'space-y-1' : 'space-y-1.5')}>
+    <div className={cn('w-full group', compact ? 'space-y-1' : 'space-y-1.5')} title={`${label}: ${value}/${max}`}>
       <div className="flex items-center justify-between text-xs">
         <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
           {icon}
@@ -77,6 +77,11 @@ export function StatBar({
             background: `linear-gradient(90deg, transparent ${pct - 8}%, rgba(255,255,255,0.35) ${pct}%, transparent ${pct + 8}%)`,
           }}
         />
+        {/* Threshold ticks at 30 and 60 (visible on hover) */}
+        <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-0 bottom-0 w-px bg-white/20" style={{ left: '30%' }} />
+          <div className="absolute top-0 bottom-0 w-px bg-white/20" style={{ left: '60%' }} />
+        </div>
       </div>
     </div>
   );

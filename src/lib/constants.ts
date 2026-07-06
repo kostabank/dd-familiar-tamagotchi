@@ -44,12 +44,12 @@ export function clamp(v: number, min = GAME.MIN_STAT, max = GAME.MAX_STAT): numb
 
 export const SPECIES_INFO: Record<
   string,
-  { label: string; emoji: string; tagline: string }
+  { label: string; emoji: string; tagline: string; accent: string }
 > = {
-  construct: { label: 'Конструкт', emoji: '◈', tagline: 'Парящий октаэдр с живым ядром' },
-  dragon: { label: 'Псевдодракончик', emoji: 'dragon', tagline: 'Изумрудно-лазурный зверёк' },
-  magpie: { label: 'Сорока', emoji: '✶', tagline: 'Чёрно-белая воровка блёсток' },
-  doll: { label: 'Оживленная Кукла', emoji: '♟', tagline: 'Мешковатая тканевая душа' },
+  construct: { label: 'Конструкт', emoji: '◈', tagline: 'Парящий октаэдр с живым ядром', accent: '#3b82f6' },
+  dragon: { label: 'Псевдодракончик', emoji: 'dragon', tagline: 'Изумрудно-лазурный зверёк', accent: '#2dd4bf' },
+  magpie: { label: 'Сорока', emoji: '✶', tagline: 'Чёрно-белая воровка блёсток', accent: '#e2e8f0' },
+  doll: { label: 'Оживленная Кукла', emoji: '♟', tagline: 'Мешковатая тканевая душа', accent: '#a855f7' },
 };
 
 export const STATE_INFO: Record<string, { label: string; color: string; desc: string }> = {

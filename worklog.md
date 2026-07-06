@@ -442,3 +442,72 @@ Task: Assess project status, QA via agent-browser, add sound effects + familiar 
 
 Stage Summary:
 - 2 new features (sound effects system with 10 synthesized SFX + ambient drone + mute toggle, familiar customization with rename + accent color picker) + styling polish (animated number counters, full-screen celebration overlay with confetti for quest/achievement completions). All browser-verified (rename worked −25 coins, accent color applied, sound toggle functional, no errors). Lint-clean. Services running on :3000 and :3003. 4/11 achievements now unlocked for raven (Первая Метаморфоза + Подросток + Кладоискатель + Игривый likely from previous play tests).
+
+---
+Task ID: 15 (QA + Feature Round 5)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, wire accentColor into 3D + achievement detail modal + mobile drawer + styling polish.
+
+## Current Project Status (assessment)
+- Both services UP on arrival (:3000, :3003). No restart needed before QA.
+- agent-browser QA: auth, login (raven), dashboard all working. No browser/console/runtime errors.
+- Previous rounds' features (sound, customization, quests, achievements, thoughts, etc.) all intact.
+- raven's familiar "Искра Пламенная" (renamed last round) intact; accentColor #A855F7 still set.
+- Project stable → proceeded with new feature development.
+
+## Completed Modifications (this round)
+
+### 1. accentColor wired into 3D model (feature completion)
+- **PlayerDashboard.tsx:** Added `modelConfigOverride` prop to FamiliarCanvas call — when `fam.accentColor` is set, passes it as both `emissiveColor` and `accentColor` in the ModelConfig override. This tints the familiar's glow + accent parts (dragon wings, magpie belly, doll stitches, construct core) with the player's chosen color.
+- Verified: raven's dragon (accentColor #A855F7) now renders with purple emissive glow instead of default teal.
+
+### 2. Achievement Detail Modal (new feature)
+- **AchievementsPanel.tsx rewrite:** Each achievement `<li>` is now clickable (cursor-pointer + hover:scale-[1.01] + hover:border-arcane/40), opens a detail Dialog.
+- **AchievementDetailDialog component** (inline): shows:
+  - Large icon (grayscale + Lock if not unlocked)
+  - Title + tier badge
+  - Description
+  - Status badge (✓ Разблокировано / 🔒 Заблокировано)
+  - Progress card with bar + numeric (e.g. 5/15)
+  - 2-col grid: Metric label (Эволюции/Монеты/Игры/etc.) + Reward (+20/+50/+150 монет by tier)
+  - Unlock date card (emerald-tinted) with full MSK timestamp (day month year, HH:MM)
+  - Close button
+- TIER_STYLES now includes `reward` field (bronze 20, silver 50, gold 150) for display.
+
+### 3. Mobile Swipe-Up Drawer (new feature)
+- **MobilePanelsDrawer.tsx:** Uses vaul `Drawer` (already installed) with:
+  - Floating trigger button (fixed bottom-right, lg:hidden, 12×12 rounded-full, gradient arcane→frost, glow).
+  - Drawer content (max-h-85vh, bg-card/95 backdrop-blur-xl, border-arcane/30) containing the secondary panels: BuffsPanel, AchievementsPanel, CustomizePanel, ActivityLogPanel, PartyRosterSidebar.
+  - Header with "Панели" title + X close button.
+  - Scrollable body with fantasy-scroll.
+- **PlayerDashboard layout update:** Primary panels (Actions, DailyBuff, QuestTracker) stay inline on all breakpoints. Secondary panels (Buffs, Achievements, Customize, ActivityLog) wrapped in `hidden lg:block` div — visible inline on desktop, hidden on mobile where the drawer provides them.
+
+### 4. Styling Polish
+- **StatBar threshold ticks:** Added `group` class + hover-reveal vertical tick marks at 30% and 60% positions on the progress bar (red→amber→green thresholds). Also added `title` tooltip with raw value.
+- **Species-themed canvas frame:** Added `accent` color to each species in SPECIES_INFO (construct #3b82f6, dragon #2dd4bf, magpie #e2e8f0, doll #a855f7). PlayerDashboard canvas frame now uses `border-2` with the species accent color at 25% opacity + an inset glow shadow + outer glow shadow — so the 3D canvas border visually matches the familiar's species.
+- **Achievement card hover:** Unlocked achievements get hover:scale + border-arcane/40; locked get hover:opacity-100 (from 70%).
+
+## Verification (agent-browser, all passed)
+- Login as raven → dashboard renders; accentColor #A855F7 visible in CustomizePanel. ✓
+- Achievement detail modal: clicked "Первая Метаморфоза" → modal opened with icon, title, tier (БРОНЗА), description, "✓ Разблокировано" badge, progress 1/1, metric "Эволюции", reward "+20 монет", unlock date "07 июля 2026 г. в 00:05 МСК". ✓
+- Mobile viewport (390×844): floating "Открыть панели" button visible bottom-right. Clicked → drawer opened with "Панели" header + full achievement list (7 items with progress) + secondary panels. ✓
+- Desktop (1440×1000): secondary panels visible inline in right column; accent-tinted canvas border (dragon teal). ✓
+- No browser errors, no console errors, no dev-log errors.
+- Lint: 0 errors, 0 warnings.
+- Services: both running (:3000, :3003), hourly cron ticking (2 familiars, resonance 90%, "+2 Temp HP").
+
+## Unresolved Issues / Risks
+- None critical. All features browser-verified on both desktop and mobile.
+- The mobile drawer duplicates the secondary panel components (rendered both inline on desktop and in drawer on mobile). Since they're hidden via CSS (`hidden lg:block`), the mobile versions only mount when the drawer opens — acceptable overhead.
+- accentColor override applies to emissiveColor + accentColor in ModelConfig; for species where accentColor isn't used in the model (e.g. construct uses ornamentColor for the eye), the tint may be partial. Acceptable — the emissive glow is the most visible effect.
+
+## Next-Phase Priority Recommendations
+1. **Trading/gifting** — spend coins to send a mood/sync boost to a party member (new API + UI).
+2. **Quest templates** — DM can pick from preset quest templates instead of writing from scratch.
+3. **Background music tracks** — multiple ambient tracks (forest/cave/tavern) selectable from a menu.
+4. **Familiar bio/lore** — editable text field for player-written familiar backstory.
+5. **Leaderboard** — ranked view of all players by coins/achievements/stage.
+6. **Notification feed** — persistent (not toast) feed of recent unlocks/quests/events.
+
+Stage Summary:
+- 1 feature completion (accentColor wired into 3D model — familiar now visually tints with player's chosen color) + 2 new features (achievement detail modal with full info, mobile swipe-up drawer with vaul for secondary panels) + styling polish (stat-bar threshold ticks, species-themed canvas frame border with accent glow, achievement card hover effects). All browser-verified on desktop AND mobile (390×844). Lint-clean, no errors. Services running on :3000 and :3003.
