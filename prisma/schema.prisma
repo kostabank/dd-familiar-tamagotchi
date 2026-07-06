@@ -1,0 +1,69 @@
+// D&D Familiar Tamagotchi — Prisma schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  passwordHash   String
+  role           String   @default("player") // 'player' | 'dm'
+  characterName  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  familiar       Familiar?
+  interactionLogs InteractionLog[]
+}
+
+model Familiar {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  species        String   // 'construct' | 'dragon' | 'magpie' | 'doll'
+  name           String
+  stage          Int      @default(1) // 1, 2, 3
+  evolutionPath  String?  // path_name chosen at evolution
+  hiddenBuff     String?  // hidden buff stored after evolution
+  energy         Int      @default(80) // 0-100
+  mood           Int      @default(80) // 0-100
+  fatigue        Int      @default(0)  // 0-100
+  health         Int      @default(100) // 0-100
+  sync           Int      @default(0)  // 0-100
+  isSleeping     Boolean  @default(false)
+  sleepStartedAt DateTime?
+  lastTick       DateTime @default(now())
+  coins          Int      @default(50)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  interactionLogs InteractionLog[]
+}
+
+model EvolutionOption {
+  id                String  @id @default(cuid())
+  species           String  // 'construct' | 'dragon' | 'magpie' | 'doll'
+  fromStage         Int     // 1 or 2
+  toStage           Int     // 2 or 3
+  pathName          String  // e.g. 'Сентинель', 'Архонт'
+  visualDescription String
+  hiddenBuff        String  // not shown to player until chosen
+  modelConfig       String  // JSON string with 3D params (color, emissive, scale...)
+}
+
+model InteractionLog {
+  id          String   @id @default(cuid())
+  familiarId  String
+  familiar    Familiar @relation(fields: [familiarId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionType  String   // 'feed' | 'play' | 'sleep' | 'wake' | 'evolve' | 'admin_edit' | 'event'
+  detail      String?
+  timestamp   DateTime @default(now())
+}

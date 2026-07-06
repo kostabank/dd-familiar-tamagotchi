@@ -1,0 +1,163 @@
+'use client';
+
+import { useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import FamiliarCanvas from '@/components/familiar/FamiliarCanvas';
+import { StatBar } from './StatBar';
+import { ActionButtons } from './ActionButtons';
+import { BuffsPanel } from './BuffsPanel';
+import { MiniGame } from './MiniGame';
+import { EvolutionModal } from './EvolutionModal';
+import { useStore } from '@/lib/store';
+import { useFamiliar } from '@/hooks/use-familiar';
+import { useAuth } from '@/hooks/use-auth';
+import { useSocket } from '@/hooks/use-socket';
+import { SPECIES_INFO, STATE_INFO } from '@/lib/constants';
+import { Battery, Smile, BatteryLow, HeartPulse, Wifi, Coins, LogOut, Sparkles } from 'lucide-react';
+
+export function PlayerDashboard() {
+  const { user, familiar, partyResonance, evolving, doLogout } = useStore();
+  const { doLogout: logout } = useAuth();
+  useSocket();
+  const fam = useStore((s) => s.familiar) ?? familiar;
+
+  // Periodic refresh as a fallback to socket updates.
+  useEffect(() => {
+    const t = setInterval(() => {
+      fetch('/api/familiar', { credentials: 'same-origin' })
+        .then((r) => r.ok && r.json())
+        .then((d) => d && useStore.getState().setFamiliar(d.familiar))
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!user || !fam) return null;
+
+  const stateInfo = STATE_INFO[fam.state];
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="border-b border-arcane/15 bg-card/40 backdrop-blur sticky top-0 z-20">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-arcane to-frost flex items-center justify-center font-bold text-sm shrink-0">
+              D&D
+            </div>
+            <div className="min-w-0">
+              <div className="font-semibold truncate">
+                {user.characterName || user.username}
+              </div>
+              <div className="text-xs text-muted-foreground truncate">
+                {user.username} · игрок
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="border-amber-400/40 text-amber-400">
+              <Coins className="h-3 w-3 mr-1" /> {fam.coins}
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={logout}>
+              <LogOut className="h-4 w-4" /> Выйти
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main: desktop = 60/40 horizontal, mobile = stacked vertical */}
+      <main className="flex-1 mx-auto max-w-7xl w-full p-3 md:p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 md:gap-4">
+          {/* 3D Canvas — 3/5 on desktop, top on mobile */}
+          <section className="lg:col-span-3 order-1">
+            <div className="relative rounded-2xl overflow-hidden border border-arcane/20 bg-gradient-to-b from-[#0a0a1a] to-[#15152a] arcane-border" style={{ height: 'clamp(320px, 50vh, 560px)' }}>
+              <FamiliarCanvas
+                species={fam.species}
+                stage={fam.stage}
+                state={fam.state}
+                evolving={evolving}
+                onEvolutionComplete={() => useStore.getState().setEvolving(false)}
+              />
+              {/* Overlay info */}
+              <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
+                <Badge className="bg-arcane/30 border-arcane/40 backdrop-blur w-fit">
+                  {SPECIES_INFO[fam.species].label} · Стадия {fam.stage}
+                </Badge>
+                <Badge
+                  className="backdrop-blur w-fit"
+                  style={{ backgroundColor: `${stateInfo.color}30`, borderColor: `${stateInfo.color}66`, color: stateInfo.color }}
+                >
+                  {stateInfo.label}
+                </Badge>
+              </div>
+              <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between pointer-events-none">
+                <div>
+                  <div className="text-xs text-muted-foreground">Имя фамильяра</div>
+                  <div className="text-lg font-semibold text-glow-arcane">{fam.name}</div>
+                </div>
+                {fam.evolutionPath && (
+                  <Badge variant="outline" className="border-frost/40 text-frost backdrop-blur">
+                    {fam.evolutionPath}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Right panels — 2/5 on desktop, below canvas on mobile */}
+          <section className="lg:col-span-2 order-2 space-y-3 md:space-y-4">
+            <Card className="arcane-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span>Параметры</span>
+                  {partyResonance && (
+                    <span className="text-xs text-muted-foreground font-normal">
+                      Резонанс: {partyResonance.averageMood}%
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <StatBar label="Энергия" value={fam.energy} icon={<Battery className="h-3.5 w-3.5" />} />
+                <StatBar label="Настроение" value={fam.mood} icon={<Smile className="h-3.5 w-3.5" />} />
+                <StatBar label="Усталость" value={fam.fatigue} icon={<BatteryLow className="h-3.5 w-3.5" />} colorClass="from-violet-500 to-purple-600" />
+                <StatBar label="Здоровье" value={fam.health} icon={<HeartPulse className="h-3.5 w-3.5" />} />
+                <Separator className="my-1" />
+                <StatBar label="Синхронизация" value={fam.sync} icon={<Wifi className="h-3.5 w-3.5" />} colorClass="from-arcane to-frost" />
+              </CardContent>
+            </Card>
+
+            <Card className="arcane-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-arcane" /> Действия
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ActionButtons />
+              </CardContent>
+            </Card>
+
+            <BuffsPanel />
+          </section>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="mt-auto border-t border-arcane/15 bg-card/30">
+        <div className="mx-auto max-w-7xl px-4 py-3 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
+          <span>D&D Familiar Tamagotchi · Время по Москве · Decay каждый час</span>
+          {partyResonance?.buff && (
+            <span className="text-arcane">{partyResonance.buff}</span>
+          )}
+        </div>
+      </footer>
+
+      <MiniGame />
+      <EvolutionModal />
+    </div>
+  );
+}
