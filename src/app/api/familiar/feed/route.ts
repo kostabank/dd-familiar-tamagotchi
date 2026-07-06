@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { recomputeAndPersist, toFamiliarDTO } from '@/lib/familiar-logic';
+import { recomputeAndPersist, toFamiliarDTO, checkAndUnlockAchievements } from '@/lib/familiar-logic';
 import { GAME, clamp } from '@/lib/constants';
 import { broadcastFamiliarUpdate, broadcastPartyResonance } from '@/lib/socket-client';
 import { computePartyResonance } from '@/lib/familiar-logic';
@@ -39,12 +39,14 @@ export async function POST() {
       data: { familiarId: familiar.id, userId: me.id, actionType: 'feed', detail: `+${GAME.FEED_ENERGY_GAIN} energy` },
     });
 
+    const newlyUnlocked = await checkAndUnlockAchievements(me.id);
     const dto = toFamiliarDTO(updated);
     await broadcastFamiliarUpdate(dto);
     await broadcastPartyResonance(await computePartyResonance());
-    return NextResponse.json({ familiar: dto });
+    return NextResponse.json({ familiar: dto, newAchievements: newlyUnlocked });
   } catch (e) {
     console.error('[familiar/feed]', e);
     return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 });
   }
 }
+

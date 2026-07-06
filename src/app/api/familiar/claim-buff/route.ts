@@ -8,6 +8,7 @@ import {
   recordDailyClaim,
   getDailyClaimStatus,
   nowMoscow,
+  checkAndUnlockAchievements,
 } from '@/lib/familiar-logic';
 import { GAME, clamp } from '@/lib/constants';
 import { broadcastFamiliarUpdate } from '@/lib/socket-client';
@@ -42,10 +43,11 @@ export async function POST() {
       data: { familiarId: familiar.id, userId: me.id, actionType: 'claim_buff', detail: `daily buff #${status.claimCount + 1}` },
     });
 
+    const newlyUnlocked = await checkAndUnlockAchievements(me.id);
     const dto = toFamiliarDTO(updated);
     const buffs = await computeBuffs(me.id);
     await broadcastFamiliarUpdate(dto);
-    return NextResponse.json({ familiar: dto, buffs, claimed: true });
+    return NextResponse.json({ familiar: dto, buffs, claimed: true, newAchievements: newlyUnlocked });
   } catch (e) {
     console.error('[familiar/claim-buff]', e);
     return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 });

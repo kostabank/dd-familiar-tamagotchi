@@ -291,3 +291,136 @@ export async function getPartyRoster(): Promise<{ username: string; characterNam
     state: deriveState(f),
   }));
 }
+
+// ---------------------------------------------------------------------------
+// Achievements
+// ---------------------------------------------------------------------------
+
+export interface AchievementDTO {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  icon: string;
+  tier: string;
+  goal: number;
+  metric: string;
+  unlocked: boolean;
+  unlockedAt: string | null;
+  progress: number; // current metric value
+}
+
+/** Compute the current metric values for a user (used for progress display + unlock checks). */
+export async function computeAchievementMetrics(userId: string): Promise<Record<string, number>> {
+  const familiar = await db.familiar.findUnique({ where: { userId } });
+  if (!familiar) {
+    return { evolutions: 0, coins: 0, play_count: 0, feed_count: 0, pet_count: 0, streak_days: 0, stage: 0 };
+  }
+  // Count action logs by type.
+  const logs = await db.interactionLog.groupBy({
+    by: ['actionType'],
+    where: { userId },
+    _count: { _all: true },
+  });
+  const countBy = (type: string) => logs.find((l) => l.actionType === type)?._count._all ?? 0;
+  // Evolutions = count of 'evolve' logs that actually changed stage (detail contains '->').
+  const evolveLogs = await db.interactionLog.findMany({
+    where: { userId, actionType: 'evolve', detail: { contains: '->' } },
+  });
+  const evolutions = evolveLogs.length;
+  const streak = await computeStreakDays(userId);
+  return {
+    evolutions,
+    coins: familiar.coins,
+    play_count: countBy('play'),
+    feed_count: countBy('feed'),
+    pet_count: countBy('pet'),
+    streak_days: streak,
+    stage: familiar.stage,
+  };
+}
+
+/**
+ * Compute consecutive MSK days with at least one logged action.
+ * Looks at interaction logs by Moscow date; counts back from today until a gap.
+ */
+export async function computeStreakDays(userId: string): Promise<number> {
+  const logs = await db.interactionLog.findMany({
+    where: { userId },
+    select: { timestamp: true },
+    orderBy: { timestamp: 'desc' },
+  });
+  if (logs.length === 0) return 0;
+  const mskDates = new Set<string>();
+  for (const l of logs) {
+    const d = typeof l.timestamp === 'string' ? DateTime.fromISO(l.timestamp, { zone: MOSCOW_ZONE }) : DateTime.fromJSDate(l.timestamp as Date, { zone: MOSCOW_ZONE });
+    mskDates.add(d.toISODate());
+  }
+  let streak = 0;
+  let cursor = nowMoscow();
+  // If no action today, streak may still be valid from yesterday — start from today, allow 1 gap at the start.
+  for (let i = 0; i < 365; i++) {
+    const iso = cursor.toISODate();
+    if (mskDates.has(iso)) {
+      streak++;
+      cursor = cursor.minus({ days: 1 });
+    } else if (i === 0) {
+      // No action today yet — check yesterday to keep an ongoing streak alive.
+      cursor = cursor.minus({ days: 1 });
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+/** Returns all achievements with unlock status + progress for a user. */
+export async function getAchievementsForUser(userId: string): Promise<AchievementDTO[]> {
+  const all = await db.achievement.findMany({ orderBy: { tier: 'asc' } });
+  const unlocked = await db.playerAchievement.findMany({
+    where: { userId },
+    include: { achievement: true },
+  });
+  const unlockedMap = new Map(unlocked.map((u) => [u.achievementId, u.unlockedAt]));
+  const metrics = await computeAchievementMetrics(userId);
+  return all.map((a) => {
+    const progress = metrics[a.metric] ?? 0;
+    const unlockedAt = unlockedMap.get(a.id);
+    return {
+      id: a.id,
+      code: a.code,
+      title: a.title,
+      description: a.description,
+      icon: a.icon,
+      tier: a.tier,
+      goal: a.goal,
+      metric: a.metric,
+      unlocked: !!unlockedAt,
+      unlockedAt: unlockedAt ? (unlockedAt instanceof Date ? unlockedAt.toISOString() : unlockedAt) : null,
+      progress,
+    };
+  });
+}
+
+/**
+ * Checks all locked achievements for a user and unlocks any whose metric
+ * has crossed the goal. Returns the list of newly-unlocked achievements.
+ * Should be called after every state-changing action.
+ */
+export async function checkAndUnlockAchievements(userId: string): Promise<AchievementDTO[]> {
+  const all = await getAchievementsForUser(userId);
+  const newlyUnlocked: AchievementDTO[] = [];
+  for (const a of all) {
+    if (!a.unlocked && a.progress >= a.goal) {
+      try {
+        await db.playerAchievement.create({
+          data: { userId, achievementId: a.id },
+        });
+        newlyUnlocked.push({ ...a, unlocked: true, unlockedAt: new Date().toISOString() });
+      } catch {
+        // Race condition: already unlocked by a concurrent call — safe to ignore.
+      }
+    }
+  }
+  return newlyUnlocked;
+}

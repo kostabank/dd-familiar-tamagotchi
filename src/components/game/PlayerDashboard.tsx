@@ -14,6 +14,7 @@ import { EvolutionModal } from './EvolutionModal';
 import { DailyBuffPanel } from './DailyBuffPanel';
 import { ActivityLogPanel } from './ActivityLogPanel';
 import { PartyRosterSidebar } from './PartyRosterSidebar';
+import { AchievementsPanel } from './AchievementsPanel';
 import { LiveClock } from './LiveClock';
 import { AmbientBackground } from './AmbientBackground';
 import { useStore } from '@/lib/store';
@@ -87,7 +88,7 @@ export function PlayerDashboard() {
 
           {/* 3D Canvas */}
           <section className="lg:col-span-3 xl:col-span-3 order-1 xl:order-2">
-            <div className="relative rounded-2xl overflow-hidden border border-arcane/20 bg-gradient-to-b from-[#0a0a1a] to-[#15152a] arcane-border" style={{ height: 'clamp(340px, 52vh, 580px)' }}>
+            <div className="relative rounded-2xl overflow-hidden border border-arcane/20 bg-gradient-to-b from-[#0a0a1a] to-[#15152a] arcane-border scanlines" style={{ height: 'clamp(340px, 52vh, 580px)' }}>
               <FamiliarCanvas
                 species={fam.species}
                 stage={fam.stage}
@@ -95,6 +96,13 @@ export function PlayerDashboard() {
                 evolving={evolving}
                 onEvolutionComplete={() => useStore.getState().setEvolving(false)}
                 petTrigger={petEffect}
+                thoughts={{
+                  energy: fam.energy,
+                  mood: fam.mood,
+                  fatigue: fam.fatigue,
+                  health: fam.health,
+                  sync: fam.sync,
+                }}
               />
               {/* Overlay info */}
               <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
@@ -167,6 +175,7 @@ export function PlayerDashboard() {
 
             <DailyBuffPanel />
             <BuffsPanel />
+            <AchievementsPanel />
             <ActivityLogPanel />
 
             {/* Mobile: show party roster inline at the bottom */}

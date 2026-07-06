@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface StatBarProps {
@@ -29,6 +30,23 @@ export function StatBar({
 }: StatBarProps) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   const gradient = colorClass || colorForValue(value);
+  const prevValue = useRef(value);
+  const [pulsing, setPulsing] = useState(false);
+
+  // Trigger a pulse animation when the value changes.
+  useEffect(() => {
+    if (prevValue.current !== value) {
+      let cancelled = false;
+      Promise.resolve().then(() => {
+        if (cancelled) return;
+        setPulsing(true);
+      });
+      const id = setTimeout(() => setPulsing(false), 500);
+      prevValue.current = value;
+      return () => { cancelled = true; clearTimeout(id); };
+    }
+  }, [value]);
+
   return (
     <div className={cn('w-full', compact ? 'space-y-1' : 'space-y-1.5')}>
       <div className="flex items-center justify-between text-xs">
@@ -44,7 +62,11 @@ export function StatBar({
       </div>
       <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-white/5 ring-1 ring-white/5">
         <div
-          className={cn('h-full rounded-full bg-gradient-to-r transition-all duration-500 ease-out', gradient)}
+          className={cn(
+            'h-full rounded-full bg-gradient-to-r transition-all duration-500 ease-out',
+            gradient,
+            pulsing && 'stat-pop'
+          )}
           style={{ width: `${pct}%` }}
         />
         <div
@@ -57,3 +79,4 @@ export function StatBar({
     </div>
   );
 }
+

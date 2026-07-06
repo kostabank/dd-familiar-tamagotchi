@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { recomputeAndPersist, toFamiliarDTO, computePartyResonance } from '@/lib/familiar-logic';
+import { recomputeAndPersist, toFamiliarDTO, computePartyResonance, checkAndUnlockAchievements } from '@/lib/familiar-logic';
 import { GAME, clamp } from '@/lib/constants';
 import { broadcastFamiliarUpdate, broadcastPartyResonance } from '@/lib/socket-client';
 import type { ModelConfig } from '@/lib/types';
@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const newlyUnlocked = await checkAndUnlockAchievements(me.id);
     const dto = toFamiliarDTO(updated);
     await broadcastFamiliarUpdate(dto);
     await broadcastPartyResonance(await computePartyResonance());
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
       revealedBuff: option.hiddenBuff,
       modelConfig,
       pathName: option.pathName,
+      newAchievements: newlyUnlocked,
     });
   } catch (e) {
     console.error('[familiar/evolve]', e);

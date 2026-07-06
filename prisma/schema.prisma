@@ -21,6 +21,7 @@ model User {
   familiar       Familiar?
   interactionLogs InteractionLog[]
   dailyClaims    DailyBuffClaim[]
+  achievements   PlayerAchievement[]
 }
 
 model Familiar {
@@ -77,4 +78,30 @@ model DailyBuffClaim {
   lastClaimMsk String  // ISO date (yyyy-MM-dd) in Europe/Moscow when last claimed
   claimCount  Int      @default(0)
   updatedAt   DateTime @updatedAt
+}
+
+// Catalog of all unlockable achievements (seeded once).
+model Achievement {
+  id          String   @id @default(cuid())
+  code        String   @unique // e.g. 'first_evolution', 'coin_hoarder'
+  title       String
+  description String
+  icon        String   // emoji or short symbol
+  tier        String   @default("bronze") // bronze | silver | gold
+  goal        Int      // numeric goal (e.g. 1 evolution, 100 coins, 7 days)
+  metric      String   // 'evolutions' | 'coins' | 'play_count' | 'feed_count' | 'pet_count' | 'streak_days' | 'stage'
+
+  players     PlayerAchievement[]
+}
+
+// Per-player unlocked achievements (created when the metric crosses the goal).
+model PlayerAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime @default(now())
+
+  @@unique([userId, achievementId])
 }

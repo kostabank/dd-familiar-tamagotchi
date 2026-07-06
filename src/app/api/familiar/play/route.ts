@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { recomputeAndPersist, toFamiliarDTO, computePartyResonance } from '@/lib/familiar-logic';
+import { recomputeAndPersist, toFamiliarDTO, computePartyResonance, checkAndUnlockAchievements } from '@/lib/familiar-logic';
 import { GAME, clamp } from '@/lib/constants';
 import { broadcastFamiliarUpdate, broadcastPartyResonance } from '@/lib/socket-client';
 
@@ -52,10 +52,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const newlyUnlocked = await checkAndUnlockAchievements(me.id);
     const dto = toFamiliarDTO(updated);
     await broadcastFamiliarUpdate(dto);
     await broadcastPartyResonance(await computePartyResonance());
-    return NextResponse.json({ familiar: dto, success, moodGain, syncGain, coins });
+    return NextResponse.json({ familiar: dto, success, moodGain, syncGain, coins, newAchievements: newlyUnlocked });
   } catch (e) {
     console.error('[familiar/play]', e);
     return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 });

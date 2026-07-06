@@ -7,6 +7,7 @@ import type { Species, FamiliarState, ModelConfig } from '@/lib/types';
 import FamiliarModel from './models/FamiliarModel';
 import EvolutionAnimation from './EvolutionAnimation';
 import HeartBurst from './HeartBurst';
+import FamiliarThoughts from './FamiliarThoughts';
 
 interface Props {
   species: Species;
@@ -17,6 +18,14 @@ interface Props {
   onEvolutionComplete?: () => void;
   /** Increment to trigger a heart-particle burst (pet action). */
   petTrigger?: number;
+  /** Stats for context-aware thought bubbles. Omit to hide thoughts. */
+  thoughts?: {
+    energy: number;
+    mood: number;
+    fatigue: number;
+    health: number;
+    sync: number;
+  };
 }
 
 // Used to tint the evolution flash if no override supplied.
@@ -39,6 +48,7 @@ export default function FamiliarCanvas({
   evolving = false,
   onEvolutionComplete,
   petTrigger = 0,
+  thoughts,
 }: Props) {
   const flashColor = modelConfigOverride?.emissiveColor ?? SPECIES_EMISSIVE[species];
 
@@ -77,6 +87,19 @@ export default function FamiliarCanvas({
         />
 
         <HeartBurst trigger={petTrigger} />
+
+        {/* Thought bubble (DOM overlay in 3D space) — hidden during evolution */}
+        {!evolving && thoughts && (
+          <FamiliarThoughts
+            state={state}
+            energy={thoughts.energy}
+            mood={thoughts.mood}
+            fatigue={thoughts.fatigue}
+            health={thoughts.health}
+            sync={thoughts.sync}
+            trigger={petTrigger}
+          />
+        )}
 
         {evolving && (
           <EvolutionAnimation

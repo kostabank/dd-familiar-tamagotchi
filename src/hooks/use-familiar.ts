@@ -4,6 +4,18 @@ import { useCallback } from 'react';
 import { useStore } from '@/lib/store';
 import { toast } from 'sonner';
 import type { FamiliarDTO, BuffSummary, InteractionLogDTO } from '@/lib/types';
+import type { AchievementDTO } from '@/lib/familiar-logic';
+
+/** Show a celebratory toast for each newly-unlocked achievement. */
+function announceAchievements(achievements: AchievementDTO[] | undefined) {
+  if (!achievements || achievements.length === 0) return;
+  for (const a of achievements) {
+    toast.success(`🏆 Достижение: ${a.title}`, {
+      description: `${a.icon} ${a.description}`,
+      duration: 6000,
+    });
+  }
+}
 
 export function useFamiliar() {
   const { familiar, setFamiliar, setEvolving, setShowMiniGame, setShowEvolutionModal, setBuffs, triggerPetEffect } = useStore();
@@ -32,6 +44,7 @@ export function useFamiliar() {
       return;
     }
     setFamiliar(data.familiar);
+    announceAchievements(data.newAchievements);
     toast.success('Фамильяр накормлен', { description: `+энергия, +настроение` });
   }, [setFamiliar]);
 
@@ -44,6 +57,7 @@ export function useFamiliar() {
     }
     setFamiliar(data.familiar);
     triggerPetEffect();
+    announceAchievements(data.newAchievements);
     toast('Фамильяр мурлычет от ласки', { description: `+${3} настроение` });
   }, [setFamiliar, triggerPetEffect]);
 
@@ -60,6 +74,7 @@ export function useFamiliar() {
       return null;
     }
     setFamiliar(data.familiar);
+    announceAchievements(data.newAchievements);
     if (data.success) {
       toast.success('Победа в мини-игре!', { description: `+${data.moodGain} настроение, +${data.coins} монет` });
     } else {
@@ -99,6 +114,7 @@ export function useFamiliar() {
     }
     setFamiliar(data.familiar);
     setBuffs(data.buffs);
+    announceAchievements(data.newAchievements);
     toast.success('Бафф дня получен!', { description: `+15 монет, бафф активирован на сегодня` });
     return data;
   }, [setFamiliar, setBuffs]);
@@ -115,6 +131,12 @@ export function useFamiliar() {
     if (!res.ok) return [];
     const data = await res.json();
     return data.logs || [];
+  }, []);
+
+  const fetchAchievements = useCallback(async (): Promise<{ achievements: AchievementDTO[]; unlockedCount: number; total: number }> => {
+    const res = await fetch('/api/familiar/achievements', { credentials: 'same-origin' });
+    if (!res.ok) return { achievements: [], unlockedCount: 0, total: 0 };
+    return res.json();
   }, []);
 
   const evolve = useCallback(async (optionId: string) => {
@@ -135,6 +157,7 @@ export function useFamiliar() {
     setFamiliar(data.familiar);
     // Let the 3D evolution animation play for ~2s before clearing.
     setTimeout(() => setEvolving(false), 2200);
+    announceAchievements(data.newAchievements);
     toast.success(`Эволюция: ${data.pathName}!`, {
       description: `Скрытый бафф раскрыт: ${data.revealedBuff}`,
     });
@@ -153,6 +176,7 @@ export function useFamiliar() {
     claimBuff,
     fetchEvolutionOptions,
     fetchLogs,
+    fetchAchievements,
     evolve,
     setShowMiniGame,
     setShowEvolutionModal,

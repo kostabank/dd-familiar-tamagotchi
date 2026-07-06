@@ -148,3 +148,66 @@
   50% { opacity: 1; }
 }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* Glassmorphism card surface */
+.glass {
+  background: linear-gradient(135deg, rgba(26,26,46,0.7), rgba(35,35,71,0.5));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.glass-strong {
+  background: linear-gradient(135deg, rgba(26,26,46,0.92), rgba(35,35,71,0.82));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(168,85,247,0.15);
+}
+
+/* Stat-bar pulse when value changes (key triggers re-mount via key prop) */
+@keyframes stat-pop {
+  0% { transform: scaleY(1); filter: brightness(1); }
+  30% { transform: scaleY(1.4); filter: brightness(1.6); }
+  100% { transform: scaleY(1); filter: brightness(1); }
+}
+.stat-pop { animation: stat-pop 0.5s ease-out; transform-origin: left; }
+
+/* Achievement unlock flash */
+@keyframes achievement-flash {
+  0% { box-shadow: 0 0 0 0 rgba(251,191,36,0.7); }
+  100% { box-shadow: 0 0 0 16px rgba(251,191,36,0); }
+}
+.achievement-flash { animation: achievement-flash 1.2s ease-out; }
+
+/* Shimmer skeleton loader */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(168,85,247,0.08) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Thought bubble fade-in */
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-bubble-in { animation: bubble-in 0.4s ease-out; }
+
+/* Subtle scanline overlay for the 3D canvas frame */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(168,85,247,0.015) 3px,
+    transparent 4px
+  );
+  border-radius: inherit;
+}

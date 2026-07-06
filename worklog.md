@@ -223,3 +223,75 @@ Task: Assess project status, QA via agent-browser, add new features (daily buff,
 
 Stage Summary:
 - 4 new features added (daily buff claim, pet action, activity log, party roster) + styling polish (ambient bg, live clock, 3-col desktop layout, sparkle dust) + 1 bug fix (BuffsPanel resonance). All browser-verified, lint-clean, no errors. Services running on :3000 and :3003.
+
+---
+Task ID: 12 (QA + Feature Round 2)
+Agent: orchestrator (webDevReview cron)
+Task: Assess project status, QA via agent-browser, add achievements system + familiar thoughts + styling polish.
+
+## Current Project Status (assessment)
+- Both services were UP on arrival (Next.js :3000, familiar-service :3003). No restart needed.
+- QA via agent-browser: auth, login (raven + thorn), dashboard, pet, daily-buff all working. No browser/console/runtime errors.
+- Previous round's features (daily buff, pet, activity log, party roster, ambient bg, live clock) all intact.
+- Project was stable → proceeded with new feature development.
+
+## Completed Modifications (this round)
+
+### 1. Achievements System (new feature)
+- **DB:** Added `Achievement` model (catalog: code, title, description, icon, tier bronze/silver/gold, goal, metric) + `PlayerAchievement` model (userId+achievementId unique, unlockedAt). Pushed schema + regenerated Prisma client.
+- **Seed:** `prisma/seed-achievements.ts` — 11 achievements across 4 categories:
+  - Evolution: Первая Метаморфоза (🥚 bronze, 1 evolution), Подросток (⭐ silver, stage 2), Совершенство (👑 gold, stage 3)
+  - Coins: Кладоискатель (💰 silver, 100), Дракон-Скупец (🐉 gold, 300)
+  - Actions: Игривый (🎮 bronze, 10 plays), Мастер Игры (🕹️ silver, 25), Кормилец (🍎 bronze, 15 feeds), Ласковый (💗 bronze, 20 pets)
+  - Streak: Постоянство (🔥 bronze, 3 days), Недельный Ритуал (⚡ silver, 7 days) — consecutive MSK days with ≥1 action
+- **Lib:** `computeAchievementMetrics()` (counts logs by type, computes streak via MSK-date set), `computeStreakDays()` (walks back from today allowing 1 gap for "not yet active today"), `getAchievementsForUser()` (returns DTOs with progress + unlock status), `checkAndUnlockAchievements()` (unlocks any whose progress ≥ goal, returns newly-unlocked list).
+- **API:** `GET /api/familiar/achievements` (lists all + progress, also runs unlock check). Wired `checkAndUnlockAchievements()` into feed/play/pet/evolve/claim-buff routes — each returns `newAchievements` array.
+- **UI:** `AchievementsPanel.tsx` — scrollable list with tier-colored rings/glow (bronze/silver/gold), progress bars for locked, unlock timestamp for unlocked, overall progress bar in header (X/11). Re-fetches on familiar state changes.
+- **Hook:** `useFamiliar.fetchAchievements()` + `announceAchievements()` helper that fires celebratory toasts (🏆 "Достижение: {title}") for each newly-unlocked achievement.
+
+### 2. Familiar Thoughts / Speech Bubbles (new feature)
+- **3D component:** `FamiliarThoughts.tsx` — uses drei `<Html>` for crisp DOM text positioned in 3D space above the familiar. Gentle bobbing via useFrame. Rotates thoughts every 6-9s with fade transition.
+- **Context-aware thought pools:** 6 state-based pools (happy/hungry/sad/tired/sleeping/normal) with 4 messages each, PLUS conditional urgent thoughts (health<30 → "Мне плохо...", sync≥80 → "почти готов эволюционировать", fatigue≥70 → "Так устал...", energy≥90+mood≥90 → "на пике формы").
+- **Wiring:** Added `thoughts` prop to FamiliarCanvas; PlayerDashboard passes current stats. Hidden during evolution. Refreshes on pet trigger (action feedback).
+- **Styling:** Glassmorphic bubble with arcane border, tail pointer, backdrop-blur.
+
+### 3. Styling Polish
+- **globals.css additions:**
+  - `.glass` / `.glass-strong` — glassmorphism utilities (backdrop-blur + gradient bg)
+  - `.stat-pop` — keyframe for stat-bar pulse-on-change (scaleY + brightness flash)
+  - `.achievement-flash` — golden ring flash for unlocks
+  - `.skeleton-shimmer` — shimmer loading skeleton
+  - `.animate-bubble-in` — thought bubble entrance
+  - `.scanlines` — subtle CRT scanline overlay for the 3D canvas frame
+- **StatBar enhancement:** Added `useRef` + `useState` to detect value changes → triggers `stat-pop` animation (0.5s brightness+scale pulse) when stats update after an action.
+- **3D canvas frame:** Added `scanlines` class for a subtle retro-magical overlay.
+- **EvolutionAnimation:** Already had sparkles + light flash + spin (from round 0); unchanged.
+
+## Verification (agent-browser, all passed)
+- Login as raven → dashboard renders with all panels including new AchievementsPanel (2/11 unlocked visible).
+- AchievementsPanel shows: 🥚 Первая Метаморфоза (unlocked 07 июл 00:05 МСК), ⭐ Подросток (unlocked), plus progress bars: coins 92/300, play 1/10, feed 1/15, pet 3→4/20, streak 1/3, stage 2/3. ✓
+- API confirms 2/11 unlocked (Первая Метаморфоза bronze + Подросток silver). ✓
+- Pet action: count 3→4, achievement progress updated live, no errors. ✓
+- Daily buff: new MSK day (00:06 Jul 7) correctly reset claim → "Получить бафф дня" available → dice roll → "Получено сегодня" (count 2, +15 coins → 107 total). ✓
+- Thought bubble: renders above familiar ("Я..." visible), context-aware, bobs gently. ✓
+- Stat bars: pulse animation on value change (verified visually). ✓
+- No browser errors, no console errors, no dev-log errors, no service-log errors.
+- Lint: 0 errors, 0 warnings.
+- Services: both running (:3000, :3003), hourly cron ticking (2 familiars, resonance 90%, buff "+2 Temp HP").
+
+## Unresolved Issues / Risks
+- None critical. All features browser-verified.
+- The `editing` unused state in AdminPanel (pre-existing, harmless) still present.
+- Three.js deprecation warnings (THREE.Clock, PCFSoftShadowMap) — benign, from upstream drei/r3f.
+- Thought bubble uses drei `<Html>` which renders DOM in 3D — works well but adds a small DOM node per canvas; fine for single-familiar view.
+
+## Next-Phase Priority Recommendations
+1. **DM Quest system** — DM can assign a daily quest (e.g., "feed 3 times", "play once") that grants sync on completion. New DB model + DM UI + player quest tracker.
+2. **Sound effects / ambient audio toggle** — feed/play/pet/evolve SFX + background ambient track (with mute toggle).
+3. **Mobile swipe-up inventory drawer** (vaul-based) — better mobile UX for the right-panel stack.
+4. **Trading/gifting** — spend coins to send a mood/sync boost to a party member.
+5. **Achievement reward system** — unlocking achievements grants coins or cosmetic rewards.
+6. **Familiar customization** — rename, choose accent color after evolution.
+
+Stage Summary:
+- 2 new features (achievements system with 11 unlockable badges + familiar thoughts speech bubbles) + styling polish (glassmorphism, stat-pulse animation, scanlines, skeleton shimmer utilities). All browser-verified, lint-clean, no errors. Services running on :3000 and :3003. 2/11 achievements correctly auto-unlocked for existing Stage-2 dragon player.
