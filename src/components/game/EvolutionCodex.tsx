@@ -14,7 +14,7 @@ import { useStore } from '@/lib/store';
 import dynamic from 'next/dynamic';
 import { SPECIES_INFO } from '@/lib/constants';
 import type { Species, ModelConfig } from '@/lib/types';
-import { BookOpen, Lock, CheckCircle2, Sparkles, Trophy } from 'lucide-react';
+import { BookOpen, Lock, CheckCircle2, Sparkles, Trophy, MapPin } from 'lucide-react';
 
 // 3D preview is client-only.
 const FamiliarCanvas = dynamic(
@@ -182,13 +182,20 @@ export function EvolutionCodex() {
                   <div className="flex-1 h-px bg-gradient-to-r from-arcane/30 to-transparent" />
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {group.items.map((entry) => (
+                  {group.items.map((entry) => {
+                    const isCurrent =
+                      !!data.currentPath &&
+                      entry.pathName === data.currentPath &&
+                      entry.toStage === data.currentStage;
+                    return (
                     <div
                       key={entry.id}
-                      className={`rounded-xl border overflow-hidden flex flex-col ${
-                        entry.discovered
-                          ? 'border-emerald-500/40 codex-card-discovered'
-                          : 'border-white/10 codex-card-locked'
+                      className={`rounded-xl border overflow-hidden flex flex-col relative ${
+                        isCurrent
+                          ? 'border-arcane/70 current-path-badge'
+                          : entry.discovered
+                            ? 'border-emerald-500/40 codex-card-discovered'
+                            : 'border-white/10 codex-card-locked'
                       }`}
                     >
                       <div className="h-28 bg-gradient-to-b from-[#0a0a1a] to-[#15152a] relative">
@@ -209,14 +216,18 @@ export function EvolutionCodex() {
                             {entry.fromStage}→{entry.toStage}
                           </span>
                         </div>
-                        {entry.discovered && (
+                        {isCurrent ? (
+                          <div className="absolute top-1.5 right-1.5 codex-badge flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-arcane/80 text-white text-[9px] font-semibold">
+                            <MapPin className="h-3 w-3" /> текущий
+                          </div>
+                        ) : entry.discovered ? (
                           <div className="absolute top-1.5 right-1.5 codex-badge">
                             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                           </div>
-                        )}
+                        ) : null}
                       </div>
                       <div className="p-2.5 flex-1 flex flex-col">
-                        <div className={`font-semibold text-sm ${entry.discovered ? 'text-arcane' : 'text-muted-foreground'}`}>
+                        <div className={`font-semibold text-sm flex items-center gap-1 ${entry.discovered ? 'text-arcane' : 'text-muted-foreground'}`}>
                           {entry.discovered ? entry.pathName : '???'}
                         </div>
                         {entry.discovered ? (
@@ -241,7 +252,8 @@ export function EvolutionCodex() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}

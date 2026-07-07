@@ -30,6 +30,8 @@ import { VolumeControl } from './VolumeControl';
 import { FloatingStatNumbers } from './FloatingStatNumbers';
 import { EvolutionCodex } from './EvolutionCodex';
 import { ShortcutsHelp } from './ShortcutsHelp';
+import { OnboardingTour } from './OnboardingTour';
+import { StreakBadge } from './StreakBadge';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
@@ -89,7 +91,8 @@ export function PlayerDashboard() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
+            <StreakBadge />
             <LiveClock />
             <MusicTrackSelector />
             <VolumeControl />
@@ -271,9 +274,21 @@ export function PlayerDashboard() {
       <footer className="mt-auto border-t border-arcane/15 bg-card/30 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-3 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
           <span>D&D Familiar Tamagotchi · Время по Москве · Decay каждый час</span>
-          {partyResonance?.buff && (
-            <span className="text-arcane">{partyResonance.buff}</span>
-          )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                try { window.localStorage.removeItem('ddt_onboarding_done_v1'); } catch { /* noop */ }
+                window.location.reload();
+              }}
+              className="text-muted-foreground/70 hover:text-arcane transition-colors"
+              title="Показать обучение снова"
+            >
+              Обучение
+            </button>
+            {partyResonance?.buff && (
+              <span className="text-arcane">{partyResonance.buff}</span>
+            )}
+          </div>
         </div>
       </footer>
 
@@ -281,6 +296,7 @@ export function PlayerDashboard() {
       <EvolutionModal />
       <EvolutionCodex />
       <ShortcutsHelp />
+      <OnboardingTour />
       <FamiliarProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
       <CelebrationOverlay celebration={celebration} />
     </div>

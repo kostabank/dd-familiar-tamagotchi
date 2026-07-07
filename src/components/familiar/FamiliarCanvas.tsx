@@ -54,7 +54,7 @@ export default function FamiliarCanvas({
 
   return (
     <Canvas
-      shadows
+      shadows="percentage"
       camera={{ position: [0, 1, 5], fov: 45 }}
       dpr={[1, 2]}
       style={{ width: '100%', height: '100%', display: 'block' }}

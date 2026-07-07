@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { createQuestAndAssign } from '@/lib/familiar-logic';
 import { toast } from 'sonner';
 
-const VALID_METRICS = ['feed', 'play', 'pet', 'claim_buff', 'evolve'];
+const VALID_METRICS = ['feed', 'play', 'pet', 'sleep', 'wake', 'claim_buff', 'evolve'];
 
 // POST /api/admin/quests — DM creates a quest and assigns to all players.
 export async function POST(req: NextRequest) {

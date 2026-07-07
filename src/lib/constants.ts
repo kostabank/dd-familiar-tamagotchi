@@ -73,6 +73,13 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
   { title: 'Ласковый хозяин', description: 'Погладь фамильяра 5 раз — он скучает по вниманию.', metric: 'pet', goal: 5, syncReward: 15, coinReward: 10, emoji: '💗' },
   { title: 'Испытание магией', description: 'Получи бафф дня, чтобы усилить фамильяра.', metric: 'claim_buff', goal: 1, syncReward: 10, coinReward: 5, emoji: '✨' },
   { title: 'Большое приключение', description: 'Поиграй с фамильяром 5 раз для укрепления связи!', metric: 'play', goal: 5, syncReward: 30, coinReward: 25, emoji: '⚔️' },
+  // New templates (CRON-2)
+  { title: 'Сонное царство', description: 'Фамильяр вымотан после боя с гоблинами. Уложи его спать, чтобы восстановить силы.', metric: 'sleep', goal: 1, syncReward: 12, coinReward: 8, emoji: '😴' },
+  { title: 'Глубокий отдых', description: 'После тяжёлого подземелья фамильяру нужен долгий отдых. Усыпляй его дважды!', metric: 'sleep', goal: 2, syncReward: 22, coinReward: 18, emoji: '🌙' },
+  { title: 'Пиршество героя', description: 'Накрой королевский стол — покорми фамильяра 10 раз за день!', metric: 'feed', goal: 10, syncReward: 45, coinReward: 40, emoji: '👑' },
+  { title: 'Крепкая связь', description: 'Погладь фамильяра 15 раз — между вами должна возникнуть нерушимая связь.', metric: 'pet', goal: 15, syncReward: 35, coinReward: 30, emoji: '🤝' },
+  { title: 'Ночная охота', description: 'Поиграй с фамильяром 8 раз — он тренирует инстинкты хищника.', metric: 'play', goal: 8, syncReward: 40, coinReward: 35, emoji: '🌙' },
+  { title: 'Тройной ритуал', description: 'Получи бафф дня три раза подряд. Терпение и ритуал — путь к силе!', metric: 'claim_buff', goal: 3, syncReward: 50, coinReward: 45, emoji: '🔮' },
 ];
 
 export function clamp(v: number, min = GAME.MIN_STAT, max = GAME.MAX_STAT): number {

@@ -1024,3 +1024,77 @@ Task: QA + новые фичи (Evolution Codex, Floating stat numbers, Keyboard
 4. **Daily streak rewards** — бонус за N дней подряд.
 5. **Sound effect на эволюцию** — сейчас есть, но можно усилить.
 6. **Codex: показать текущий выбранный путь** отдельным бейджем в карточке.
+
+---
+Task ID: CRON-2 (webDevReview round 2)
+Agent: orchestrator (z.ai code)
+Task: QA + onboarding tutorial + Codex current-path badge + больше квестов + streak badge + fix THREE.js warnings.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый.
+- Предыдущий раунд (CRON-1) добавил: Floating stat numbers, Evolution Codex, Keyboard shortcuts.
+- Найдено: THREE.js deprecation warnings (PCFSoftShadowMap) — cosmetic.
+- DragonFamiliar.tsx:409 stale Turbopack cache error — non-blocking, файл корректен.
+
+## Выполненные модификации
+
+### 1. Fix THREE.js PCFSoftShadowMap deprecation (баг-фикс)
+- `src/components/familiar/FamiliarCanvas.tsx`: изменил `<Canvas shadows>` → `<Canvas shadows="percentage">` (PCFShadowMap вместо устаревшего PCFSoftShadowMap).
+- Верификация: после reload console warnings PCFSoftShadowMap = 0 (было 8+).
+
+### 2. Onboarding tutorial (новая фича — 8 шагов)
+- `src/components/game/OnboardingTour.tsx`: новый компонент. 8 шагов с иконками: приветствие → 3D-модель → базовый уход → параметры/decay → слепая эволюция → Кодекс → горячие клавиши → готово.
+- Показывается один раз при первом входе игрока (localStorage `ddt_onboarding_done_v1`). DM не видит.
+- Прогресс-бар, step dots, кнопки Назад/Далее/Пропустить, цветовые акценты по шагу.
+- `src/app/globals.css`: добавил `@keyframes fade-in` для backdrop.
+- `src/components/game/PlayerDashboard.tsx`: интегрирован OnboardingTour + кнопка "Обучение" в footer (replay: очищает localStorage + reload).
+- Верификация: VLM подтвердил "Добро пожаловать в партию!" + навигация Шаг 1→2 ("3D-фамильяр", "Шаг 2/8"), progress bar, dots.
+
+### 3. Codex: current-path badge (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: карточка текущего пути эволюции получает фиолетовую рамку + пульсирующий бейдж "текущий" с иконкой MapPin (вместо зелёной галочки). Вычисляется по `entry.pathName === data.currentPath && entry.toStage === data.currentStage`.
+- `src/app/globals.css`: добавил `@keyframes current-path-pulse`.
+- Верификация: VLM подтвердил фиолетовый бейдж "текущий" с MapPin на карточке "Багровый" (dragon filter).
+
+### 4. Больше квестовых шаблонов (6 → 12) + sleep-квесты
+- `src/lib/constants.ts`: добавил 6 новых шаблонов: 😴 Сонное царство (sleep×1), 🌙 Глубокий отдых (sleep×2), 👑 Пиршество героя (feed×10), 🤝 Крепкая связь (pet×15), 🌙 Ночная охота (play×8), 🔮 Тройной ритуал (claim_buff×3).
+- `src/lib/familiar-logic.ts`: добавил 'sleep' и 'wake' в QUEST_METRIC_LABELS.
+- `src/app/api/admin/quests/route.ts`: добавил 'sleep','wake' в VALID_METRICS.
+- `src/components/game/DmQuestPanel.tsx`: добавил 'sleep','wake' в METRICS.
+- `src/app/api/familiar/sleep/route.ts`: добавил вызов progressQuest('sleep') + checkAndUnlockAchievements + grantAchievementRewards (раньше sleep не прогрессил квесты).
+- Верификация: DM видит все 12 шаблонов; sleep-квест назначен → raven спит → квест выполнен (progress 1/1, completed: True) ✓
+
+### 5. Streak badge (новая фича — геймификация)
+- `src/app/api/familiar/streak/route.ts`: новый endpoint, возвращает computeStreakDays.
+- `src/components/game/StreakBadge.tsx`: новый компонент — пламя + число дней в шапке. Цвет растёт по серии (3дн=оранжевый, 7дн=красный). Flicker-анимация. Poll каждые 60с.
+- `src/app/globals.css`: добавил `@keyframes flame-flicker`.
+- `src/components/game/PlayerDashboard.tsx`: StreakBadge добавлен в шапку перед LiveClock.
+- Верификация: VLM подтвердил "пламя + число дней" в шапке.
+
+### 6. Стиль (mandatory improvement)
+- Onboarding: accent-цветной icon-box с glow, progress bar, step dots с анимацией ширины.
+- Codex current-path: пульсирующая фиолетовая рамка + MapPin бейдж.
+- Streak badge: flame-flicker анимация, цветовая интенсивность по длине серии.
+- Footer: кнопка "Обучение" для replay.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- PCFSoftShadowMap warnings: 0 (было 8+) ✓
+- Onboarding: появляется при первом входе, 8 шагов, навигация работает, skip работает, replay через footer ✓
+- Codex current-path badge: VLM подтвердил "текущий" с MapPin на Багровый ✓
+- Sleep-квест: end-to-end (assign → sleep → completed) ✓
+- 12 квестовых шаблонов в DM-панели ✓
+- Streak badge в шапке: VLM подтвердил ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка парсинга, non-blocking (3D рендерится). Лечится `.next` clean + restart при необходимости.
+- `frameState.clock` (R3F internal) — Clock deprecation из R3F internals, не фиксятся без fork.
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Daily streak rewards** — бонус монет за 3/7/14 дней подряд (streak badge уже есть, нужен reward-механизм).
+2. **Codex: фильтр "только открытые"** + сортировка.
+3. **Sound effect на эволюцию** — усилить текущий.
+4. **Tutorial: подсветка элементов** — вместо центрированного модала, pointer на конкретные UI-элементы.
+5. **Mini-game: больше вариаций** — сейчас одна "Поймай сияющие сферы".
+6. **Mobile: onboarding адаптивность** — проверить на 390px.

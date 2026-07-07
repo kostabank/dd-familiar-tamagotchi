@@ -15,7 +15,7 @@ import type { PlayerQuestDTO, QuestDTO } from '@/lib/familiar-logic';
 import { ScrollText, Plus, History, Target, Coins, Wifi, LayoutTemplate } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const METRICS = ['feed', 'play', 'pet', 'claim_buff', 'evolve'] as const;
+const METRICS = ['feed', 'play', 'pet', 'sleep', 'wake', 'claim_buff', 'evolve'] as const;
 type Metric = typeof METRICS[number];
 
 export function DmQuestPanel() {

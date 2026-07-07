@@ -519,6 +519,8 @@ const QUEST_METRIC_LABELS: Record<string, string> = {
   feed: 'Кормить',
   play: 'Играть',
   pet: 'Гладить',
+  sleep: 'Усыплять',
+  wake: 'Будить',
   claim_buff: 'Получить бафф дня',
   evolve: 'Эволюционировать',
 };
