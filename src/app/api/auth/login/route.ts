@@ -22,6 +22,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     console.error('[auth/login]', e);
-    return NextResponse.json({ error: 'Внутренняя ошибка', debug: process.env.NODE_ENV === 'production' ? (e instanceof Error ? e.message : 'unknown') : undefined }, { status: 500 });
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 });
   }
 }
