@@ -844,3 +844,45 @@ Task: Assess project status, QA via agent-browser, add gifting achievements + vo
 
 Stage Summary:
 - 2 new features (gifting achievements: 🎁 Щедрый bronze + 💝 Покровитель silver with gift_count metric wired into gift API, volume slider with expandable UI + localStorage persistence) + styling polish (volume slider animation, header audio grouping, gift metric label). All browser-verified end-to-end (sent 3 gifts → Щедрый unlocked with +20 coins, volume adjusted + persisted). Lint-clean, no errors. Services running on :3000 and :3003. 4/13 achievements now unlocked for raven (Первая Метаморфоза + Подросток + Кладоискатель + Щедрый).
+
+---
+Task ID: 21 (Vercel + Supabase Migration)
+Agent: orchestrator
+Task: Push to GitHub + migrate to Vercel + Supabase (PostgreSQL + Realtime + Cron) + test.
+
+## Completed
+
+### 1. Initial project pushed to GitHub
+- Created repo: https://github.com/kostabank/dd-familiar-tamagotchi
+- Commit 1: "Initial commit: D&D Familiar Tamagotchi (Next.js 16 + Prisma SQLite + R3F + Socket.io)"
+
+### 2. Migration to Vercel + Supabase
+- **Prisma**: SQLite → PostgreSQL (schema.prisma). Added schema.dev.prisma (SQLite) for local dev.
+- **Real-time**: Socket.io mini-service (port 3003) → Supabase Realtime (broadcast channels). Created src/lib/supabase.ts + src/hooks/use-realtime.ts. Polling fallback (15s) when Supabase env vars not set.
+- **Cron**: node-cron in mini-service → Vercel Cron Jobs. Created /api/cron/tick endpoint + vercel.json (hourly schedule).
+- **Removed**: mini-services/familiar-service/, src/hooks/use-socket.ts
+- **Added**: .env.example, README.md (with full deploy instructions), vercel.json
+
+### 3. Testing (all passed)
+- Lint: 0 errors ✓
+- Local dev server: HTTP 200 ✓
+- Login as raven → dashboard renders (Партия, Искра, Энергия, Действия all OK) ✓
+- Pet action works ✓
+- DM panel loads ✓
+- Cron tick endpoint: GET /api/cron/tick → {ok:true, processed:2, changed:2} ✓
+- No browser/console errors ✓
+
+### 4. Refactored project pushed to GitHub
+- Commit 2: "Migrate to Vercel + Supabase (PostgreSQL + Realtime + Cron)"
+
+## Architecture (after migration)
+- **Single port** (3000) — no mini-service needed
+- **Vercel**: Next.js + API routes + Vercel Cron
+- **Supabase**: PostgreSQL + Realtime (WebSocket broadcast)
+- **Local dev**: Next.js + SQLite (schema.dev.prisma) + polling fallback
+
+## Deploy instructions (in README.md)
+1. Create Supabase project → get DATABASE_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+2. Push schema: `DATABASE_URL=... bun run db:push && bun run seed`
+3. Deploy to Vercel → set env vars → done
+4. For hourly cron on free tier: use GitHub Action (documented in README)
