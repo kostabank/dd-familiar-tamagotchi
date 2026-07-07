@@ -1,0 +1,156 @@
+// D&D Familiar Tamagotchi — Prisma schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  passwordHash   String
+  role           String   @default("player") // 'player' | 'dm'
+  characterName  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  familiar       Familiar?
+  interactionLogs InteractionLog[]
+  dailyClaims    DailyBuffClaim[]
+  achievements   PlayerAchievement[]
+  quests         PlayerQuest[]
+}
+
+model Familiar {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  species        String   // 'construct' | 'dragon' | 'magpie' | 'doll'
+  name           String
+  stage          Int      @default(1) // 1, 2, 3
+  evolutionPath  String?  // path_name chosen at evolution
+  hiddenBuff     String?  // hidden buff stored after evolution
+  energy         Int      @default(80) // 0-100
+  mood           Int      @default(80) // 0-100
+  fatigue        Int      @default(0)  // 0-100
+  health         Int      @default(100) // 0-100
+  sync           Int      @default(0)  // 0-100
+  isSleeping     Boolean  @default(false)
+  sleepStartedAt DateTime?
+  lastTick       DateTime @default(now())
+  coins          Int      @default(50)
+  accentColor    String?  // custom accent color (hex), unlockable after Stage 2
+  bio            String?  // player-written familiar backstory (max 500 chars)
+  modelConfig    String?  // JSON string with 3D params (colors, ornaments, aura) — persisted on evolve
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  interactionLogs InteractionLog[]
+}
+
+model EvolutionOption {
+  id                String  @id @default(cuid())
+  species           String  // 'construct' | 'dragon' | 'magpie' | 'doll'
+  fromStage         Int     // 1 or 2
+  toStage           Int     // 2 or 3
+  pathName          String  // e.g. 'Сентинель', 'Архонт'
+  visualDescription String
+  hiddenBuff        String  // not shown to player until chosen
+  modelConfig       String  // JSON string with 3D params (color, emissive, scale...)
+}
+
+model InteractionLog {
+  id          String   @id @default(cuid())
+  familiarId  String
+  familiar    Familiar @relation(fields: [familiarId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionType  String   // 'feed' | 'play' | 'pet' | 'sleep' | 'wake' | 'evolve' | 'claim_buff' | 'admin_edit' | 'event'
+  detail      String?
+  timestamp   DateTime @default(now())
+}
+
+// Tracks once-per-day (Moscow day) buff claims per player.
+model DailyBuffClaim {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastClaimMsk String  // ISO date (yyyy-MM-dd) in Europe/Moscow when last claimed
+  claimCount  Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}
+
+// Catalog of all unlockable achievements (seeded once).
+model Achievement {
+  id          String   @id @default(cuid())
+  code        String   @unique // e.g. 'first_evolution', 'coin_hoarder'
+  title       String
+  description String
+  icon        String   // emoji or short symbol
+  tier        String   @default("bronze") // bronze | silver | gold
+  goal        Int      // numeric goal (e.g. 1 evolution, 100 coins, 7 days)
+  metric      String   // 'evolutions' | 'coins' | 'play_count' | 'feed_count' | 'pet_count' | 'streak_days' | 'stage'
+
+  players     PlayerAchievement[]
+}
+
+// Per-player unlocked achievements (created when the metric crosses the goal).
+model PlayerAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+// DM-authored daily quests (one active per player at a time).
+// A quest tracks a metric goal (e.g. feed 3 times) and grants sync + coins on completion.
+model Quest {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  metric        String   // 'feed' | 'play' | 'pet' | 'claim_buff' | 'evolve'
+  goal          Int      // e.g. 3 (feed 3 times)
+  syncReward    Int      @default(15)
+  coinReward    Int      @default(10)
+  createdAt     DateTime @default(now())
+  // A quest is "active" until completed or a new one supersedes it.
+  // Per-player progress is tracked in PlayerQuest.
+  assignments   PlayerQuest[]
+}
+
+// Per-player quest assignment + progress.
+model PlayerQuest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questId     String
+  quest       Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
+  progress    Int      @default(0)
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  assignedAt  DateTime @default(now())
+
+  // Only one active (non-completed) quest per player.
+  @@unique([userId, questId])
+}
+
+// Gifts sent between players (costs coins, boosts recipient's mood/sync).
+model Gift {
+  id          String   @id @default(cuid())
+  fromUserId  String
+  toUserId    String
+  giftType    String   // 'treat' | 'toy' | 'charm' (different cost/boost)
+  coinCost    Int
+  moodBoost   Int
+  syncBoost   Int
+  message     String?
+  createdAt   DateTime @default(now())
+}
