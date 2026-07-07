@@ -119,6 +119,13 @@ export function EvolutionCodex() {
 
   const pct = data ? Math.round((data.summary.discoveredPaths / data.summary.totalPaths) * 100) : 0;
 
+  // Per-species discovery counts for the header strip.
+  const speciesStats = SPECIES_ORDER.map((sp) => {
+    const ofSpecies = data?.entries.filter((e) => e.species === sp) ?? [];
+    const discovered = ofSpecies.filter((e) => e.discovered).length;
+    return { species: sp, discovered, total: ofSpecies.length };
+  });
+
   return (
     <Dialog open={showCodex} onOpenChange={(o) => !o && setShowCodex(o)}>
       <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
@@ -149,6 +156,46 @@ export function EvolutionCodex() {
               />
             </div>
             <span className="text-xs text-muted-foreground tabular-nums">{pct}%</span>
+          </div>
+        )}
+
+        {/* Per-species discovery strip */}
+        {data && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
+            {speciesStats.map((ss) => {
+              const info = SPECIES_INFO[ss.species];
+              const spPct = ss.total > 0 ? Math.round((ss.discovered / ss.total) * 100) : 0;
+              const complete = ss.discovered === ss.total && ss.total > 0;
+              return (
+                <button
+                  key={ss.species}
+                  onClick={() => setFilterSpecies(filterSpecies === ss.species ? 'all' : ss.species)}
+                  className={`rounded-lg border px-2 py-1.5 text-left transition-all ${
+                    filterSpecies === ss.species
+                      ? 'border-arcane/60 bg-arcane/10'
+                      : 'border-white/8 bg-white/[0.02] hover:border-white/20'
+                  }`}
+                  title={`${info.label}: ${ss.discovered}/${ss.total} путей открыто`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-medium flex items-center gap-1" style={{ color: info.accent }}>
+                      <span>{info.emoji}</span>
+                      {info.label}
+                    </span>
+                    <span className="text-[9px] font-mono tabular-nums text-muted-foreground">
+                      {ss.discovered}/{ss.total}
+                      {complete && <span className="text-emerald-400 ml-0.5">✓</span>}
+                    </span>
+                  </div>
+                  <div className="h-1 w-full rounded-full bg-white/8 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${spPct}%`, backgroundColor: info.accent }}
+                    />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
 

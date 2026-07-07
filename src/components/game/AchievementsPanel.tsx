@@ -14,10 +14,10 @@ import type { AchievementDTO } from '@/lib/familiar-logic';
 import { Trophy, Lock, Coins, Calendar, Target, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const TIER_STYLES: Record<string, { ring: string; glow: string; label: string; labelColor: string; reward: number }> = {
-  bronze: { ring: 'border-amber-700/50', glow: 'shadow-[0_0_12px_-2px_rgba(180,83,9,0.5)]', label: 'Бронза', labelColor: 'text-amber-700', reward: 20 },
-  silver: { ring: 'border-slate-400/50', glow: 'shadow-[0_0_12px_-2px_rgba(148,163,184,0.6)]', label: 'Серебро', labelColor: 'text-slate-300', reward: 50 },
-  gold: { ring: 'border-amber-400/60', glow: 'shadow-[0_0_16px_-2px_rgba(251,191,36,0.7)]', label: 'Золото', labelColor: 'text-amber-400', reward: 150 },
+const TIER_STYLES: Record<string, { ring: string; glow: string; label: string; labelColor: string; barColor: string; reward: number }> = {
+  bronze: { ring: 'border-amber-700/50', glow: 'shadow-[0_0_12px_-2px_rgba(180,83,9,0.5)]', label: 'Бронза', labelColor: 'text-amber-700', barColor: 'bg-amber-700', reward: 20 },
+  silver: { ring: 'border-slate-400/50', glow: 'shadow-[0_0_12px_-2px_rgba(148,163,184,0.6)]', label: 'Серебро', labelColor: 'text-slate-300', barColor: 'bg-slate-400', reward: 50 },
+  gold: { ring: 'border-amber-400/60', glow: 'shadow-[0_0_16px_-2px_rgba(251,191,36,0.7)]', label: 'Золото', labelColor: 'text-amber-400', barColor: 'bg-amber-400', reward: 150 },
 };
 
 const METRIC_LABELS: Record<string, string> = {
@@ -37,6 +37,7 @@ export function AchievementsPanel() {
   const petEffect = useStore((s) => s.petEffect);
   const [data, setData] = useState<{ achievements: AchievementDTO[]; unlockedCount: number; total: number } | null>(null);
   const [selected, setSelected] = useState<AchievementDTO | null>(null);
+  const [tierFilter, setTierFilter] = useState<'all' | 'bronze' | 'silver' | 'gold'>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +60,7 @@ export function AchievementsPanel() {
     const unlocked = ofTier.filter((a) => a.unlocked).length;
     return { tier: t, unlocked, total: ofTier.length };
   });
+  const filteredAchievements = tierFilter === 'all' ? achievements : achievements.filter((a) => a.tier === tierFilter);
 
   return (
     <>
@@ -76,13 +78,38 @@ export function AchievementsPanel() {
               style={{ width: `${pct}%` }}
             />
           </div>
-          {/* Per-tier breakdown strip */}
+          {/* Per-tier breakdown strip (clickable - filter) */}
           <div className="flex items-center gap-1.5 mt-2">
+            <button
+              onClick={() => setTierFilter('all')}
+              className={cn(
+                'flex-1 min-w-0 rounded-md px-1 py-0.5 border transition-all text-left',
+                tierFilter === 'all' ? 'border-arcane/50 bg-arcane/10' : 'border-transparent hover:bg-white/5'
+              )}
+              title="Все достижения"
+            >
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[8px] uppercase tracking-wide font-medium text-muted-foreground">Все</span>
+                <span className="text-[8px] text-muted-foreground font-mono tabular-nums">{unlockedCount}/{total}</span>
+              </div>
+              <div className="h-1 w-full rounded-full bg-white/5 overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 transition-all duration-500" style={{ width: `${pct}%` }} />
+              </div>
+            </button>
             {tierStats.map((ts) => {
               const style = TIER_STYLES[ts.tier];
               const tierPct = ts.total > 0 ? Math.round((ts.unlocked / ts.total) * 100) : 0;
+              const active = tierFilter === ts.tier;
               return (
-                <div key={ts.tier} className="flex-1 min-w-0" title={`${style.label}: ${ts.unlocked}/${ts.total}`}>
+                <button
+                  key={ts.tier}
+                  onClick={() => setTierFilter(active ? 'all' : ts.tier)}
+                  className={cn(
+                    'flex-1 min-w-0 rounded-md px-1 py-0.5 border transition-all text-left',
+                    active ? 'border-arcane/50 bg-arcane/10' : 'border-transparent hover:bg-white/5'
+                  )}
+                  title={style.label + ": " + ts.unlocked + "/" + ts.total + " - click to filter"}
+                >
                   <div className="flex items-center justify-between mb-0.5">
                     <span className={cn('text-[8px] uppercase tracking-wide font-medium', style.labelColor)}>
                       {style.label}
@@ -93,22 +120,22 @@ export function AchievementsPanel() {
                   </div>
                   <div className="h-1 w-full rounded-full bg-white/5 overflow-hidden">
                     <div
-                      className={cn('h-full transition-all duration-500', style.labelColor.replace('text-', 'bg-'))}
+                      className={cn('h-full transition-all duration-500', style.barColor)}
                       style={{ width: `${tierPct}%` }}
                     />
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="h-56 px-4 pb-4">
-            {achievements.length === 0 ? (
-              <div className="text-center py-6 text-xs text-muted-foreground">Загрузка...</div>
+            {filteredAchievements.length === 0 ? (
+              <div className="text-center py-6 text-xs text-muted-foreground">Нет достижений в этой категории</div>
             ) : (
               <ul className="space-y-2">
-                {achievements.map((a) => {
+                {filteredAchievements.map((a) => {
                   const tier = TIER_STYLES[a.tier] || TIER_STYLES.bronze;
                   const progressPct = Math.min(100, a.goal > 0 ? Math.round((a.progress / a.goal) * 100) : 0);
                   return (
@@ -143,7 +170,7 @@ export function AchievementsPanel() {
                             <div className="mt-1.5 flex items-center gap-1.5">
                               <div className="h-1 flex-1 rounded-full bg-white/5 overflow-hidden">
                                 <div
-                                  className={cn('h-full transition-all', tier.labelColor.replace('text-', 'bg-'))}
+                                  className={cn('h-full transition-all', tier.barColor)}
                                   style={{ width: `${progressPct}%` }}
                                 />
                               </div>

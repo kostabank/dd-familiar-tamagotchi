@@ -1251,3 +1251,59 @@ Task: QA + Codex search + Achievements tier progress strip + Party roster hover 
 4. **Codex: статистика по видам** — сколько путей открыто для каждого вида в шапке.
 5. **Achievements: фильтр по tier** — показывать только bronze/silver/gold.
 6. **Party roster: онлайн-индикатор** (last seen) через WebSocket presence.
+
+---
+Task ID: CRON-6 (webDevReview round 6)
+Agent: orchestrator (z.ai code)
+Task: QA + 2-я мини-игра (Память рун) + Codex per-species stats + Achievements tier filter + bug fix.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый.
+- Предыдущие раунды добавили: Floating numbers, Codex (filters/sorting/search/badges), Keyboard shortcuts, Onboarding, Streak system (badge+rewards+milestone+warning), 12 квестов, Achievements tier strip, Party roster tooltips.
+
+## Выполненные модификации
+
+### 1. BUG FIX: SWC parse error (template literal в JSX attribute)
+- AchievementsPanel.tsx: template literal `title={`${style.label}: ${ts.unlocked}/${ts.total}`}` (со слэшем между двумя `${}` интерполяциями) ломал SWC/Turbopack парсер ("JSX expressions must have one parent element"). Заменил на string concatenation `title={style.label + ": " + ts.unlocked + "/" + ts.total}`.
+- Также заменил `style.labelColor.replace('text-', 'bg-')` на предвычисленный `barColor` в TIER_STYLES (более чисто, убирает runtime-вычисление).
+- Перезапустил dev-сервер с `rm -rf .next` для чистого кэша.
+
+### 2. Second mini-game: "Память рун" (новая фича)
+- `src/components/game/MiniGame.tsx`: полностью переработан. Теперь диалог открывается с GameSelector (2 карточки), каждая ведёт в свою игру с кнопкой "← назад".
+  - SpheresGame (оригинал): ловля сфер за 10с.
+  - RunesGame (новая): memory-игра. 8 рун (ᚠᚢᚦᚨᚱᚲᚷᚹ) в сетке 4×2. Игра показывает последовательность (flash), игрок повторяет. Каждый раунд +1 руна. Цель — 3 раунда. Wrong rune = game over. Progress dots показывают input progress.
+- Верификация: VLM подтвердил 2 карточки игр (Поймай сияющие сферы + Память рун) с иконками и описаниями ✓
+
+### 3. Codex: per-species stats strip (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: добавил speciesStats (discovered/total по каждому виду) + кликабельный стрип из 4 карточек под общим прогрессом. Каждая карточка: emoji + label + счётчик X/6 + мини-бар цветом вида + ✓ при полном открытии. Клик фильтрует по виду.
+- Верификация: VLM подтвердил 4 карточки (Конструкт/Псевдодракончик/Сорока/Кукла) с счётчиками и мини-барами ✓
+
+### 4. Achievements: tier filter (новая фича)
+- `src/components/game/AchievementsPanel.tsx`: tier strip теперь кликабельный — 4 кнопки (Все/Бронза/Серебро/Золото). Клик фильтрует список по tier. Добавил `barColor` в TIER_STYLES для чистых прогресс-баров. Список рендерится из filteredAchievements.
+- Верификация: VLM подтвердил стрип с 4 кнопками-фильтрами ✓
+
+### 5. Стиль (mandatory improvement)
+- Mini-game selector: 2 карточки с accent-colored icon-boxes (glow), hover-scale.
+- Codex species strip: кликабельные карточки с accent-цветами видов.
+- Achievements tier filter: активная кнопка с arcane-подсветкой.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 (после rm -rf .next + restart) ✓
+- Mini-game selector: VLM подтвердил 2 игры ✓
+- Codex per-species stats: VLM подтвердил 4 карточки с счётчиками ✓
+- Achievements tier filter: VLM подтвердил 4 кнопки-фильтра ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка, non-blocking.
+- `frameState.clock` (R3F internal) — Clock deprecation, не фиксится без fork.
+- ВАЖНО для будущих агентов: избегать template literals вида `${a}/${b}` (слэш между интерполяциями) в JSX attributes — SWC парсер ломается. Использовать string concatenation.
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Element-spotlight tutorial** — pointer на конкретные UI-элементы.
+2. **Sound effect на эволюцию** — усилить.
+3. **Runes game: уровни сложности** — больше рун / быстрее flash.
+4. **Codex: галерея открытых 3D-моделей** — отдельный fullscreen-режим.
+5. **Achievements: сортировка** (по прогрессу / tier / названию).
+6. **Party roster: онлайн-индикатор** через WebSocket presence.
