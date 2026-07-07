@@ -7,6 +7,15 @@ import { GAME } from '@/lib/constants';
 import { Utensils, Gamepad2, Moon, Sun, Sparkles, Loader2, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/** Small keyboard-key hint chip shown on action buttons (desktop only). */
+function KbdHint({ k }: { k: string }) {
+  return (
+    <kbd className="kbd ml-1 hidden sm:inline-flex" aria-hidden>
+      {k}
+    </kbd>
+  );
+}
+
 export function ActionButtons() {
   const { familiar, feed, pet, sleep, wake, setShowMiniGame, fetchEvolutionOptions } = useFamiliar();
   const { setShowEvolutionModal } = useStore();
@@ -32,6 +41,7 @@ export function ActionButtons() {
         variant="secondary"
       >
         <Utensils className="h-4 w-4" /> Кормить
+        <KbdHint k="F" />
       </Button>
       <Button
         onClick={() => setShowMiniGame(true)}
@@ -40,6 +50,7 @@ export function ActionButtons() {
         variant="secondary"
       >
         <Gamepad2 className="h-4 w-4" /> Играть
+        <KbdHint k="G" />
       </Button>
       <Button
         onClick={pet}
@@ -48,14 +59,17 @@ export function ActionButtons() {
         variant="secondary"
       >
         <Heart className="h-4 w-4" /> Погладить
+        <KbdHint k="P" />
       </Button>
       {isSleeping ? (
         <Button onClick={wake} className="bg-frost/90 hover:bg-frost text-white font-semibold" variant="secondary">
           <Sun className="h-4 w-4" /> Разбудить
+          <KbdHint k="S" />
         </Button>
       ) : (
         <Button onClick={sleep} variant="outline">
           <Moon className="h-4 w-4" /> Усыпить
+          <KbdHint k="S" />
         </Button>
       )}
 
@@ -71,6 +85,7 @@ export function ActionButtons() {
       >
         {canEvolve ? <Sparkles className="h-4 w-4" /> : <Loader2 className="h-4 w-4" />}
         {canEvolve ? 'Адаптация доступна!' : `Синхронизация ${familiar.sync}/100`}
+        {canEvolve && <KbdHint k="E" />}
       </Button>
 
       {tooTired && !isSleeping && (

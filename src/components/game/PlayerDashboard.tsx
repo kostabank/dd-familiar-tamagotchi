@@ -27,17 +27,24 @@ import { FamiliarProfileModal } from './FamiliarProfileModal';
 import { NotificationFeed } from './NotificationFeed';
 import { MusicTrackSelector } from './MusicTrackSelector';
 import { VolumeControl } from './VolumeControl';
+import { FloatingStatNumbers } from './FloatingStatNumbers';
+import { EvolutionCodex } from './EvolutionCodex';
+import { ShortcutsHelp } from './ShortcutsHelp';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
 import { useRealtime } from '@/hooks/use-realtime';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { SPECIES_INFO, STATE_INFO } from '@/lib/constants';
-import { Battery, Smile, BatteryLow, HeartPulse, Wifi, Coins, LogOut, Sparkles } from 'lucide-react';
+import { Battery, Smile, BatteryLow, HeartPulse, Wifi, Coins, LogOut, Sparkles, BookOpen, Keyboard } from 'lucide-react';
 
 export function PlayerDashboard() {
   const { user, familiar, partyResonance, evolving, petEffect, celebration, clearCelebration } = useStore();
+  const setShowCodex = useStore((s) => s.setShowCodex);
+  const setShowShortcutsHelp = useStore((s) => s.setShowShortcutsHelp);
   const { doLogout: logout } = useAuth();
   useRealtime();
+  useKeyboardShortcuts();
   const fam = useStore((s) => s.familiar) ?? familiar;
   const [showProfile, setShowProfile] = useState(false);
 
@@ -140,6 +147,9 @@ export function PlayerDashboard() {
                   sync: fam.sync,
                 }}
               />
+              {/* Floating stat-change indicators (+20 Энергия etc.) */}
+              <FloatingStatNumbers />
+
               {/* Overlay info */}
               <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
                 <Badge className="bg-arcane/30 border-arcane/40 backdrop-blur w-fit">
@@ -152,9 +162,25 @@ export function PlayerDashboard() {
                   {stateInfo.label}
                 </Badge>
               </div>
-              <div className="absolute top-3 right-3 pointer-events-none">
+              <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5 pointer-events-none">
                 <div className="rounded-lg bg-black/30 backdrop-blur px-2 py-1 text-[10px] text-muted-foreground border border-white/5">
                   перетаскивай для вращения
+                </div>
+                <div className="flex items-center gap-1 pointer-events-auto">
+                  <button
+                    onClick={() => setShowCodex(true)}
+                    className="rounded-lg bg-black/40 backdrop-blur px-2 py-1 text-[10px] text-arcane border border-arcane/30 hover:bg-arcane/20 hover:border-arcane/60 transition-colors flex items-center gap-1"
+                    title="Кодекс эволюций (C)"
+                  >
+                    <BookOpen className="h-3 w-3" /> Кодекс
+                  </button>
+                  <button
+                    onClick={() => setShowShortcutsHelp(true)}
+                    className="rounded-lg bg-black/40 backdrop-blur px-2 py-1 text-[10px] text-muted-foreground border border-white/10 hover:bg-white/10 hover:text-foreground transition-colors flex items-center gap-1"
+                    title="Горячие клавиши (?)"
+                  >
+                    <Keyboard className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
               <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 pointer-events-none">
@@ -253,6 +279,8 @@ export function PlayerDashboard() {
 
       <MiniGame />
       <EvolutionModal />
+      <EvolutionCodex />
+      <ShortcutsHelp />
       <FamiliarProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
       <CelebrationOverlay celebration={celebration} />
     </div>

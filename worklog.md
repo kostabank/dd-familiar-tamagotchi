@@ -962,3 +962,65 @@ Stage Summary:
 - Экран регистрации показывает живую 3D-модель при выборе вида — сильное первое впечатление.
 - Проект полностью рабочий и верифицирован. Cron webDevReview (job_id 257497) каждые 15 мин продолжит разработку.
 - Статус: СТАБИЛЬНЫЙ. Дальнейшие шаги для cron-агента: Codex эволюций, onboarding/tutorial, больше квестовых шаблонов, баланс decay, ambient-детали, keyboard shortcuts, sound на эволюцию.
+
+---
+Task ID: CRON-1 (webDevReview round 1)
+Agent: orchestrator (z.ai code)
+Task: QA + новые фичи (Evolution Codex, Floating stat numbers, Keyboard shortcuts) + улучшение стиля.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый, ошибок в консоли нет.
+- 3D-модели детальные (4 вида × 3 стадии с нарастающей геометрией + path-specific ornaments/aura).
+- Эволюция персистентна (modelConfig сохраняется, цвета/аура применяются к 3D).
+- Все базовые действия работают: кормить, играть, гладить, спать, эволюция, подарки, квесты, достижения, DM-панель.
+- Замечание: THREE.js deprecation warnings (PCFSoftShadowMap, Clock) — не критично, cosmetic.
+
+## Выполненные модификации
+
+### 1. Floating stat numbers (новая фича — визуальный feedback)
+- `src/lib/store.ts`: добавил `floatingChanges` (массив FloatingChange) + `pushFloatingChanges`/`dismissFloatingChange` actions. Список ограничен 8 последними.
+- `src/hooks/use-familiar.ts`: добавил `applyFamiliar(next)` обёртку, которая диффит старый/новый familiar по 6 статам (energy/mood/fatigue/health/sync/coins) и эмитит цветные floating indicators (+20 Энергия, +3 Синхр. и т.д.). Fatigue вверх = красный, вниз = зелёный.
+- `src/components/game/FloatingStatNumbers.tsx`: новый компонент — оверлей над 3D-canvas, рендерит floating числа со stagger-анимацией, авто-dismiss через 2s.
+- `src/app/globals.css`: добавил `@keyframes floating-stat-pop` (rise + fade за 2s).
+
+### 2. Evolution Codex (новая фича — каталог всех 24 путей)
+- `src/app/api/familiar/codex/route.ts`: новый endpoint. Возвращает все 24 EvolutionOption с discovery-статусом (парсит evolve-логи `path=...` из InteractionLog). Summary: totalPaths, discoveredPaths, speciesReachedStage3.
+- `src/components/game/EvolutionCodex.tsx`: новый модал. Шапка с прогрессом (X/24 путей, X/4 видов до стадии III, прогресс-бар). Фильтры по 4 видам. Сетка карточек: открытые — с 3D-превью (FamiliarCanvas) + названием + visualDescription + зелёная плашка "Скрытый бафф"; закрытые — с иконкой замка + "???" (grayscale).
+- Кнопка "Кодекс" добавлена в правый верхний угол 3D-canvas в PlayerDashboard.
+
+### 3. Keyboard shortcuts (новая фича — быстрые клавиши)
+- `src/hooks/use-keyboard-shortcuts.ts`: новый хук. F=кормить, P=гладить, S=сон/пробуждение, G=мини-игра, E=эволюция, C=кодекс, ?=подсказка. Игнорируется при вводе текста или открытых модалах.
+- `src/components/game/ShortcutsHelp.tsx`: новый модал со списком клавиш в kbd-чипах.
+- `src/components/game/ActionButtons.tsx`: добавил KbdHint компонент (маленькие kbd-чипы F/G/P/S/E на кнопках, только desktop).
+- Кнопка-иконка клавиатуры добавлена рядом с Кодексом в PlayerDashboard.
+- `src/app/globals.css`: добавил `.kbd` стиль (фиолетовые квадратные чипы).
+
+### 4. Стиль (mandatory improvement)
+- Floating numbers с цветовой кодировкой по статам + glow text-shadow.
+- Codex карточки: discovered (зелёная glow-рамка) vs locked (grayscale + opacity).
+- kbd-чипы на кнопках действий для discoverability.
+- Прогресс-бар в Codex с gradient fill.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- Floating numbers: VLM подтвердил "+15 Усталость (фиолетовый), +3 Синхр. (синий)" над 3D-моделью после feed ✓
+- Codex API: 24 пути, 2 открыто (Багровый/Древний), summary корректный ✓
+- Codex UI: VLM подтвердил шапку с прогрессом (2/24, 1/4, 8%), фильтры, сетку с замками, открытую карточку Багровый с 3D + зелёной плашкой баффа ✓
+- Keyboard: F/P работают (feed/pet без ошибок), ? открывает help модал ✓
+- kbd-чипы на кнопках: VLM подтвердил видны F/G/P/S ✓
+- Кнопка Кодекс: VLM подтвердил видна (фиолетовая, иконка книги) ✓
+- Ошибок в консоли нет (после hard reload — был stale Turbopack cache с DragonFamiliar, но файл корректен, скобки 84/84 сбалансированы) ✓
+
+## Нерешённые вопросы / риски
+- THREE.js deprecation warnings (PCFSoftShadowMap, Clock) — cosmetic, не блокирующее. Можно заменить на актуальные API в следующем раунде.
+- Stale Turbopack cache иногда показывает фантомные ошибки парсинга — лечится hard reload.
+- Демо-фамильяры сброшены в stage 1 для пользователя (raven эволюционировал до stage 3 во время тестирования Codex).
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Onboarding/tutorial** для новых игроков — first-time подсказки при входе.
+2. **Заменить THREE.js deprecated API** (PCFSoftShadowMap → PCFShadowMap, Clock → Timer) — убрать warnings.
+3. **Больше квестовых шаблонов** (сейчас 6, можно добавить 4-6 новых).
+4. **Daily streak rewards** — бонус за N дней подряд.
+5. **Sound effect на эволюцию** — сейчас есть, но можно усилить.
+6. **Codex: показать текущий выбранный путь** отдельным бейджем в карточке.
