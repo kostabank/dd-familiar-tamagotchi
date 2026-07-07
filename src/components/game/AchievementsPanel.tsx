@@ -53,6 +53,13 @@ export function AchievementsPanel() {
   const total = data?.total ?? 0;
   const pct = total > 0 ? Math.round((unlockedCount / total) * 100) : 0;
 
+  // Per-tier breakdown for the granular progress strip.
+  const tierStats = (['bronze', 'silver', 'gold'] as const).map((t) => {
+    const ofTier = achievements.filter((a) => a.tier === t);
+    const unlocked = ofTier.filter((a) => a.unlocked).length;
+    return { tier: t, unlocked, total: ofTier.length };
+  });
+
   return (
     <>
       <Card className="arcane-border">
@@ -68,6 +75,31 @@ export function AchievementsPanel() {
               className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 transition-all duration-700"
               style={{ width: `${pct}%` }}
             />
+          </div>
+          {/* Per-tier breakdown strip */}
+          <div className="flex items-center gap-1.5 mt-2">
+            {tierStats.map((ts) => {
+              const style = TIER_STYLES[ts.tier];
+              const tierPct = ts.total > 0 ? Math.round((ts.unlocked / ts.total) * 100) : 0;
+              return (
+                <div key={ts.tier} className="flex-1 min-w-0" title={`${style.label}: ${ts.unlocked}/${ts.total}`}>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className={cn('text-[8px] uppercase tracking-wide font-medium', style.labelColor)}>
+                      {style.label}
+                    </span>
+                    <span className="text-[8px] text-muted-foreground font-mono tabular-nums">
+                      {ts.unlocked}/{ts.total}
+                    </span>
+                  </div>
+                  <div className="h-1 w-full rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className={cn('h-full transition-all duration-500', style.labelColor.replace('text-', 'bg-'))}
+                      style={{ width: `${tierPct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardHeader>
         <CardContent className="p-0">

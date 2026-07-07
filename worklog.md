@@ -1202,3 +1202,52 @@ Task: QA + Streak-loss warning banner + Codex sorting + styling polish.
 4. **Codex: поиск по названию** — текстовое поле для фильтрации путей.
 5. **Achievements: прогресс-бар** — визуальный прогресс по tier (bronze/silver/gold).
 6. **Party roster: тултипы** — расширенная инфо при наведении на игрока.
+
+---
+Task ID: CRON-5 (webDevReview round 5)
+Agent: orchestrator (z.ai code)
+Task: QA + Codex search + Achievements tier progress strip + Party roster hover tooltips.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый, ошибок нет.
+- Предыдущие раунды добавили: Floating numbers, Codex (+current-path badge, +open-only filter, +sorting), Keyboard shortcuts, Onboarding, Streak badge + rewards + milestone track + warning banner, 12 квестов + sleep-quests.
+
+## Выполненные модификации
+
+### 1. Codex search (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: добавил состояние `search` + текстовое поле с иконкой Search и кнопкой очистки (X). Фильтр применяется после species + onlyDiscovered: ищет по pathName (все), visualDescription и hiddenBuff (только discovered, т.к. locked показывают "???").
+- Верификация: VLM подтвердил — ввод "багр" отфильтровал до карточки "Багровый" ✓
+
+### 2. Achievements: per-tier progress strip (новая фича — стиль)
+- `src/components/game/AchievementsPanel.tsx`: добавил tierStats (bronze/silver/gold разбивка) + стрип из 3 мини-блоков под основным прогресс-баром. Каждый блок: label (Бронза/Серебро/Золото), счётчик (X/Y), мини progress-bar цветом tier.
+- Верификация: VLM подтвердил основной бар (6/13) + стрип по tier-ам с счётчиками ✓
+
+### 3. Party roster: hover tooltips (новая фича)
+- `src/components/game/PartyRosterSidebar.tsx`: обернул каждую запись в HoverCard (shadcn). При наведении (300ms delay) показывается расширенная карточка: species emoji + accent, имя персонажа, вид + имя фамильяра, state badge с цветом, стадия X/3, TooltipStat-блоки (Настроение/Энергия с цветными мини-барами и числами). Добавил иконки Smile/Battery/BatteryLow/HeartPulse.
+- Верификация: VLM подтвердил список игроков с мини-барами и state-точками ✓
+
+### 4. Стиль (mandatory improvement)
+- Codex search: compact input с left-icon и clear-button, placeholder "Поиск пути (название, описание, бафф)…".
+- Achievements tier strip: 3 цветных мини-бара (amber-700/slate-400/amber-400) с labels и счётчиками.
+- Party roster tooltip: accent-colored species icon-box, state badge с фоновым tint, TooltipStat grid с цветными progress-барами.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- Codex search: VLM подтвердил фильтрацию "багр" → "Багровый" ✓
+- Achievements tier strip: VLM подтвердил Бронза/Серебро/Золото с счётчиками ✓
+- Party roster: VLM подтвердил список с мини-барами и state-точками ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка, non-blocking.
+- `frameState.clock` (R3F internal) — Clock deprecation, не фиксится без fork.
+- Party roster hover tooltip требует реальный mouse hover (agent-browser `hover`), визуально верифицирован рендер списка.
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Element-spotlight tutorial** — pointer на конкретные UI-элементы вместо центрированного модала.
+2. **Больше вариаций мини-игры** — сейчас одна "Поймай сияющие сферы".
+3. **Sound effect на эволюцию** — усилить.
+4. **Codex: статистика по видам** — сколько путей открыто для каждого вида в шапке.
+5. **Achievements: фильтр по tier** — показывать только bronze/silver/gold.
+6. **Party roster: онлайн-индикатор** (last seen) через WebSocket presence.

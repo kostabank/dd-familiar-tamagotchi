@@ -10,11 +10,12 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 import { useStore } from '@/lib/store';
 import dynamic from 'next/dynamic';
 import { SPECIES_INFO } from '@/lib/constants';
 import type { Species, ModelConfig } from '@/lib/types';
-import { BookOpen, Lock, CheckCircle2, Sparkles, Trophy, MapPin } from 'lucide-react';
+import { BookOpen, Lock, CheckCircle2, Sparkles, Trophy, MapPin, Search, X } from 'lucide-react';
 
 // 3D preview is client-only.
 const FamiliarCanvas = dynamic(
@@ -59,6 +60,7 @@ export function EvolutionCodex() {
   const [filterSpecies, setFilterSpecies] = useState<Species | 'all'>('all');
   const [onlyDiscovered, setOnlyDiscovered] = useState(false);
   const [sortBy, setSortBy] = useState<'stage' | 'name' | 'discovered'>('stage');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!showCodex) return;
@@ -82,9 +84,22 @@ export function EvolutionCodex() {
   }, [showCodex]);
 
   const entries = data?.entries ?? [];
+  const searchTrim = search.trim().toLowerCase();
   const visible = entries
     .filter((e) => filterSpecies === 'all' || e.species === filterSpecies)
-    .filter((e) => !onlyDiscovered || e.discovered);
+    .filter((e) => !onlyDiscovered || e.discovered)
+    .filter((e) => {
+      if (!searchTrim) return true;
+      // Search matches path name or visual description (only discovered paths
+      // have a meaningful description; locked ones match by name only if the
+      // player somehow knows it — but locked paths show "???", so search
+      // primarily filters discovered paths by their visible text).
+      return (
+        e.pathName.toLowerCase().includes(searchTrim) ||
+        (e.discovered && e.visualDescription.toLowerCase().includes(searchTrim)) ||
+        (e.discovered && e.hiddenBuff.toLowerCase().includes(searchTrim))
+      );
+    });
 
   // Sort within the filtered set. 'discovered' puts open paths first (then by stage).
   const sortedVisible = [...visible].sort((a, b) => {
@@ -174,6 +189,28 @@ export function EvolutionCodex() {
           >
             <CheckCircle2 className="h-3 w-3" /> Только открытые
           </button>
+        </div>
+
+        {/* Search + Sort row */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск пути (название, описание, бафф)…"
+              className="h-8 pl-8 pr-7 text-xs"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/8 transition-colors"
+                aria-label="Очистить поиск"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Sort selector */}
