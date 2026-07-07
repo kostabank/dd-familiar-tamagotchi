@@ -1370,3 +1370,26 @@ Task: QA + Runes game difficulty levels + Codex 3D gallery fullscreen + Achievem
 4. **Codex: сравнение путей** — выбрать 2 для side-by-side 3D.
 5. **Mini-game: третья игра** (reaction/whack-a-mole).
 6. **Achievements: детали в тултипе** при наведении на tier-strip.
+
+---
+Task ID: BUGFIX-1 (user-reported)
+Agent: orchestrator (z.ai code)
+Task: Фикс бага — пустая сцена с частицами вместо 3D-модели на экране регистрации.
+
+## Корневая причина
+- В FamiliarCanvas.tsx `<FamiliarModel>` и `<Environment preset="night">` находились в одном `<Suspense fallback={null}>`.
+- Environment грузит HDR-файл с CDN. Если CDN медленный/заблокирован (как в sandbox/некоторых браузерах), Suspense не резолвится → fallback={null} → модель НЕ рендерится.
+- Sparkles находились ВНЕ Suspense → рендерились всегда → пользователь видел "пустую сцену с частицами".
+
+## Фикс
+- `src/components/familiar/FamiliarCanvas.tsx`: вынес `<Environment preset="night">` в отдельный `<Suspense fallback={null}>`. Теперь модель рендерится независимо от загрузки HDR.
+- Это также улучшает dashboard-канвас — модель появляется сразу, не дожидаясь HDR.
+
+## Верификация
+- lint: чистый ✓
+- Все 4 вида рендерятся в превью регистрации: dragon ✓, construct ✓, magpie ✓, doll ✓ (VLM подтверждение)
+- Модель объёмная, видны детали (тело, крылья, голова), средний размер ✓
+- Ошибок в консоли нет ✓
+
+Stage Summary:
+- Баг исправлен. 3D-превью на регистрации теперь работает независимо от доступности HDR CDN.

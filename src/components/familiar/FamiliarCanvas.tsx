@@ -116,7 +116,6 @@ export default function FamiliarCanvas({
           />
         )}
 
-        <Environment preset="night" />
         <ContactShadows
           position={[0, -1.5, 0]}
           opacity={0.5}
@@ -125,6 +124,13 @@ export default function FamiliarCanvas({
           far={4}
           color="#000000"
         />
+      </Suspense>
+
+      {/* Environment (HDR) in its own Suspense so the model renders even if
+          the HDR fails to load — otherwise a blocked CDN would leave the
+          whole scene empty with only the Sparkles showing. */}
+      <Suspense fallback={null}>
+        <Environment preset="night" />
       </Suspense>
 
       <OrbitControls
