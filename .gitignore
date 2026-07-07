@@ -52,3 +52,9 @@ prompt
 server.log
 # Skills directory
 /skills/
+# D&D Familiar Tamagotchi specific
+db/*.db
+db/*.db-journal
+*.log
+mini-services/*/node_modules
+agent-ctx/
