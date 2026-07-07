@@ -32,6 +32,7 @@ import { EvolutionCodex } from './EvolutionCodex';
 import { ShortcutsHelp } from './ShortcutsHelp';
 import { OnboardingTour } from './OnboardingTour';
 import { StreakBadge } from './StreakBadge';
+import { StreakWarningBanner } from './StreakWarningBanner';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
@@ -108,6 +109,7 @@ export function PlayerDashboard() {
 
       {/* Main: desktop = 3D canvas (3/5) + right panels (2/5); plus far-left party sidebar on xl */}
       <main className="flex-1 mx-auto max-w-7xl w-full p-3 md:p-4">
+        <StreakWarningBanner />
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 md:gap-4">
           {/* Party roster — hidden on small/medium, visible as left column on xl */}
           <aside className="hidden xl:block xl:col-span-1 order-3 xl:order-1">

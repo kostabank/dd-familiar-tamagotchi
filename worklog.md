@@ -1151,3 +1151,54 @@ Task: QA + Daily streak rewards + Codex "open only" filter + styling polish.
 4. **Codex: сортировка** (по стадии / по алфавиту / по времени открытия).
 5. **Mobile onboarding адаптивность** — проверить на 390px.
 6. **Streak: уведомление о потере серии** — toast если серия вот-вот оборвётся (нет действий сегодня).
+
+---
+Task ID: CRON-4 (webDevReview round 4)
+Agent: orchestrator (z.ai code)
+Task: QA + Streak-loss warning banner + Codex sorting + styling polish.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый, ошибок нет.
+- Предыдущие раунды добавили: Floating numbers, Codex (+current-path badge, +open-only filter), Keyboard shortcuts, Onboarding, Streak badge + rewards + milestone track, 12 квестов + sleep-quests.
+- Mobile onboarding проверен на 390px — рендерится корректно.
+
+## Выполненные модификации
+
+### 1. Streak-loss warning banner (новая фича — удержание игроков)
+- `src/lib/familiar-logic.ts`: добавил `hasActionToday(userId)` — проверяет, было ли действие сегодня (МСК).
+- `src/app/api/familiar/streak/route.ts`: расширил — теперь возвращает `actedToday` и `atRisk` (streak >= 1 && !actedToday).
+- `src/components/game/StreakWarningBanner.tsx`: новый компонент — оранжевый/красный баннер под шапкой. Показывается когда серия под угрозой (есть streak, но нет действий сегодня). Цвет зависит от длины серии (>=7дн = красный). Dismissible (localStorage, до изменения streak). Poll каждые 2мин, авто-исчезает после действия.
+- `src/components/game/PlayerDashboard.tsx`: интегрировал StreakWarningBanner над main grid.
+- Верификация: создал тест-игрока с вчерашним действием (streak=1, atRisk=true) → VLM подтвердил баннер "Серия 1 дн. под угрозой!" с пламенем → после кормления баннер исчез (actedToday=true) ✓
+
+### 2. Codex sorting (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: добавил состояние `sortBy` ('stage'|'name'|'discovered') + UI-контрол с 3 кнопками. Сортировка применяется после species-фильтра и onlyDiscovered:
+  - 'stage' (default): по fromStage → toStage → имени
+  - 'name': по алфавиту (localeCompare ru)
+  - 'discovered': открытые первыми, затем по стадии
+- Верификация: 3 кнопки сортировки видны, "По алфавиту" кликабельна ✓
+
+### 3. Стиль (mandatory improvement)
+- Streak banner: градиентный фон (оранжевый→жёлтый для <7дн, красный→фиолетовый для >=7дн), flame-flicker иконка, fade-in анимация.
+- Codex sort: компактные chip-кнопки с accent-подсветкой активной.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- Streak API: возвращает actedToday + atRisk ✓
+- Streak warning banner: VLM подтвердил "Серия 1 дн. под угрозой!" → исчез после feed ✓
+- Codex sorting: 3 опции видны, кликабельны ✓
+- Mobile onboarding (390px): рендерится корректно ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка, non-blocking.
+- `frameState.clock` (R3F internal) — Clock deprecation, не фиксится без fork.
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Element-spotlight tutorial** — pointer на конкретные UI-элементы вместо центрированного модала.
+2. **Больше вариаций мини-игры** — сейчас одна "Поймай сияющие сферы".
+3. **Sound effect на эволюцию** — усилить.
+4. **Codex: поиск по названию** — текстовое поле для фильтрации путей.
+5. **Achievements: прогресс-бар** — визуальный прогресс по tier (bronze/silver/gold).
+6. **Party roster: тултипы** — расширенная инфо при наведении на игрока.

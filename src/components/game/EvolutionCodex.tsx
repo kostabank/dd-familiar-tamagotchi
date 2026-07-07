@@ -58,6 +58,7 @@ export function EvolutionCodex() {
   const [loading, setLoading] = useState(false);
   const [filterSpecies, setFilterSpecies] = useState<Species | 'all'>('all');
   const [onlyDiscovered, setOnlyDiscovered] = useState(false);
+  const [sortBy, setSortBy] = useState<'stage' | 'name' | 'discovered'>('stage');
 
   useEffect(() => {
     if (!showCodex) return;
@@ -84,9 +85,21 @@ export function EvolutionCodex() {
   const visible = entries
     .filter((e) => filterSpecies === 'all' || e.species === filterSpecies)
     .filter((e) => !onlyDiscovered || e.discovered);
+
+  // Sort within the filtered set. 'discovered' puts open paths first (then by stage).
+  const sortedVisible = [...visible].sort((a, b) => {
+    if (sortBy === 'name') return a.pathName.localeCompare(b.pathName, 'ru');
+    if (sortBy === 'discovered') {
+      if (a.discovered !== b.discovered) return a.discovered ? -1 : 1;
+      return a.toStage - b.toStage || a.pathName.localeCompare(b.pathName, 'ru');
+    }
+    // 'stage' (default): by fromStage then toStage then name.
+    return a.fromStage - b.fromStage || a.toStage - b.toStage || a.pathName.localeCompare(b.pathName, 'ru');
+  });
+
   const grouped = SPECIES_ORDER.map((sp) => ({
     species: sp,
-    items: visible.filter((e) => e.species === sp),
+    items: sortedVisible.filter((e) => e.species === sp),
   })).filter((g) => g.items.length > 0);
 
   const pct = data ? Math.round((data.summary.discoveredPaths / data.summary.totalPaths) * 100) : 0;
@@ -161,6 +174,28 @@ export function EvolutionCodex() {
           >
             <CheckCircle2 className="h-3 w-3" /> Только открытые
           </button>
+        </div>
+
+        {/* Sort selector */}
+        <div className="flex items-center gap-1.5 mb-2 text-[11px]">
+          <span className="text-muted-foreground">Сортировка:</span>
+          {([
+            { key: 'stage', label: 'По стадии' },
+            { key: 'name', label: 'По алфавиту' },
+            { key: 'discovered', label: 'Сначала открытые' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setSortBy(opt.key)}
+              className={`px-2 py-0.5 rounded-md border transition-all ${
+                sortBy === opt.key
+                  ? 'border-arcane/50 bg-arcane/15 text-arcane'
+                  : 'border-white/8 bg-white/4 text-muted-foreground hover:border-arcane/30'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         {/* Grid */}

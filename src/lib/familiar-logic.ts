@@ -370,6 +370,17 @@ export async function computeAchievementMetrics(userId: string): Promise<Record<
   };
 }
 
+/** Returns true if the player has logged at least one action today (Moscow day). */
+export async function hasActionToday(userId: string): Promise<boolean> {
+  const today = todayMoscowDate();
+  const startOfToday = nowMoscow().startOf('day').toJSDate();
+  const count = await db.interactionLog.count({
+    where: { userId, timestamp: { gte: startOfToday } },
+  });
+  void today;
+  return count > 0;
+}
+
 /**
  * Compute consecutive MSK days with at least one logged action.
  * Looks at interaction logs by Moscow date; counts back from today until a gap.
