@@ -249,6 +249,13 @@ function SpheresGame({ play, onExit, onClose }: { play: (score: number, target: 
 // Runes memory game (new)
 // ============================================================
 type Phase = 'idle' | 'showing' | 'input' | 'round-win' | 'over';
+type Difficulty = 'easy' | 'normal' | 'hard';
+
+const DIFFICULTY_CONFIG: Record<Difficulty, { target: number; runeCount: number; flashMs: number; gapMs: number; label: string; color: string }> = {
+  easy: { target: 3, runeCount: 6, flashMs: 620, gapMs: 260, label: 'Лёгкий', color: '#22c55e' },
+  normal: { target: 4, runeCount: 8, flashMs: 480, gapMs: 200, label: 'Обычный', color: '#3B82F6' },
+  hard: { target: 5, runeCount: 8, flashMs: 340, gapMs: 150, label: 'Сложный', color: '#ef4444' },
+};
 
 function RunesGame({ play, onExit, onClose }: { play: (score: number, target: number) => void; onExit: () => void; onClose: () => void }) {
   const [round, setRound] = useState(0); // current round number (sequence length = round+1)
@@ -257,19 +264,21 @@ function RunesGame({ play, onExit, onClose }: { play: (score: number, target: nu
   const [inputIdx, setInputIdx] = useState(0); // how many of sequence the player has repeated
   const [phase, setPhase] = useState<Phase>('idle');
   const [bestRound, setBestRound] = useState(0);
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const playRef = useRef(play);
   useEffect(() => { playRef.current = play; }, [play]);
 
-  const TARGET_ROUND = 3; // need to clear 3 rounds to "win"
+  const cfg = DIFFICULTY_CONFIG[difficulty];
+  const TARGET_ROUND = cfg.target;
 
   const startGame = useCallback(() => {
-    const firstSeq = [Math.floor(Math.random() * RUNE_SYMBOLS.length)];
+    const firstSeq = [Math.floor(Math.random() * cfg.runeCount)];
     setSequence(firstSeq);
     setRound(1);
     setInputIdx(0);
     setBestRound(0);
     setPhase('showing');
-  }, []);
+  }, [cfg.runeCount]);
 
   // Show the sequence: flash each rune in turn.
   useEffect(() => {
@@ -285,12 +294,12 @@ function RunesGame({ play, onExit, onClose }: { play: (score: number, target: nu
       setActiveIdx(sequence[i]);
       setTimeout(() => {
         setActiveIdx(null);
-        setTimeout(() => { i++; flashOne(); }, 220);
-      }, 520);
+        setTimeout(() => { i++; flashOne(); }, cfg.gapMs);
+      }, cfg.flashMs);
     };
     const t = setTimeout(flashOne, 400);
     return () => clearTimeout(t);
-  }, [phase, sequence]);
+  }, [phase, sequence, cfg.flashMs, cfg.gapMs]);
 
   const handleRuneClick = (idx: number) => {
     if (phase !== 'input') return;
@@ -312,7 +321,7 @@ function RunesGame({ play, onExit, onClose }: { play: (score: number, target: nu
           setPhase('round-win');
           setTimeout(() => {
             // Add a new rune to the sequence and advance.
-            const next = [...sequence, Math.floor(Math.random() * RUNE_SYMBOLS.length)];
+            const next = [...sequence, Math.floor(Math.random() * cfg.runeCount)];
             setSequence(next);
             setRound((r) => r + 1);
             setPhase('showing');
@@ -366,7 +375,7 @@ function RunesGame({ play, onExit, onClose }: { play: (score: number, target: nu
       )}
 
       <div className="grid grid-cols-4 gap-2.5" style={{ minHeight: 280 }}>
-        {RUNE_SYMBOLS.map((sym, idx) => {
+        {RUNE_SYMBOLS.slice(0, cfg.runeCount).map((sym, idx) => {
           const flashing = activeIdx === idx;
           const color = RUNE_COLORS[idx];
           return (
@@ -395,8 +404,29 @@ function RunesGame({ play, onExit, onClose }: { play: (score: number, target: nu
 
       {phase === 'idle' && (
         <div className="flex flex-col items-center gap-3 mt-3">
+          {/* Difficulty selector */}
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-[11px] text-muted-foreground mr-1">Сложность:</span>
+            {(['easy', 'normal', 'hard'] as const).map((d) => {
+              const dc = DIFFICULTY_CONFIG[d];
+              const active = difficulty === d;
+              return (
+                <button
+                  key={d}
+                  onClick={() => setDifficulty(d)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-[11px] border transition-all font-medium',
+                    active ? 'border-transparent' : 'border-white/10 bg-white/4 text-muted-foreground hover:border-white/30'
+                  )}
+                  style={active ? { backgroundColor: dc.color + '22', color: dc.color, borderColor: dc.color + '66' } : {}}
+                >
+                  {dc.label}
+                </button>
+              );
+            })}
+          </div>
           <p className="text-xs text-muted-foreground text-center max-w-md">
-            В каждом раунде к последовательности добавляется новая руна. Дойди до {TARGET_ROUND}-го раунда, чтобы выиграть!
+            В каждом раунде к последовательности добавляется новая руна. Дойди до {TARGET_ROUND}-го раунда, чтобы выиграть! ({cfg.runeCount} рун, flash {cfg.flashMs}мс)
           </p>
           <Button onClick={startGame} size="lg" className="bg-frost hover:bg-frost/80">Начать игру</Button>
         </div>

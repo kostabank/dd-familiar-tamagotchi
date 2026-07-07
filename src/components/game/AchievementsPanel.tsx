@@ -38,6 +38,7 @@ export function AchievementsPanel() {
   const [data, setData] = useState<{ achievements: AchievementDTO[]; unlockedCount: number; total: number } | null>(null);
   const [selected, setSelected] = useState<AchievementDTO | null>(null);
   const [tierFilter, setTierFilter] = useState<'all' | 'bronze' | 'silver' | 'gold'>('all');
+  const [sortBy, setSortBy] = useState<'default' | 'progress' | 'tier' | 'name'>('default');
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +61,25 @@ export function AchievementsPanel() {
     const unlocked = ofTier.filter((a) => a.unlocked).length;
     return { tier: t, unlocked, total: ofTier.length };
   });
-  const filteredAchievements = tierFilter === 'all' ? achievements : achievements.filter((a) => a.tier === tierFilter);
+  const filteredAchievements = (() => {
+    const list = tierFilter === 'all' ? achievements : achievements.filter((a) => a.tier === tierFilter);
+    if (sortBy === 'default') return list;
+    const sorted = [...list];
+    if (sortBy === 'progress') {
+      // Highest progress percentage first (unlocked = 100%).
+      sorted.sort((a, b) => {
+        const pa = a.goal > 0 ? Math.min(a.progress, a.goal) / a.goal : 0;
+        const pb = b.goal > 0 ? Math.min(b.progress, b.goal) / b.goal : 0;
+        return pb - pa;
+      });
+    } else if (sortBy === 'tier') {
+      const order: Record<string, number> = { bronze: 0, silver: 1, gold: 2 };
+      sorted.sort((a, b) => (order[a.tier] ?? 9) - (order[b.tier] ?? 9));
+    } else if (sortBy === 'name') {
+      sorted.sort((a, b) => a.title.localeCompare(b.title, 'ru'));
+    }
+    return sorted;
+  })();
 
   return (
     <>
@@ -130,6 +149,29 @@ export function AchievementsPanel() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          {/* Sort selector */}
+          <div className="flex items-center gap-1 px-4 pt-2 pb-1.5 text-[10px] border-b border-white/5">
+            <span className="text-muted-foreground mr-0.5">Сорт.:</span>
+            {([
+              { key: 'default', label: 'По умолч.' },
+              { key: 'progress', label: 'По прогрессу' },
+              { key: 'tier', label: 'По tier' },
+              { key: 'name', label: 'По алфавиту' },
+            ] as const).map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setSortBy(opt.key)}
+                className={cn(
+                  'px-1.5 py-0.5 rounded text-[9px] border transition-all',
+                  sortBy === opt.key
+                    ? 'border-arcane/50 bg-arcane/15 text-arcane'
+                    : 'border-transparent text-muted-foreground hover:bg-white/5'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <ScrollArea className="h-56 px-4 pb-4">
             {filteredAchievements.length === 0 ? (
               <div className="text-center py-6 text-xs text-muted-foreground">Нет достижений в этой категории</div>

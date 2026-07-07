@@ -1307,3 +1307,66 @@ Task: QA + 2-я мини-игра (Память рун) + Codex per-species stat
 4. **Codex: галерея открытых 3D-моделей** — отдельный fullscreen-режим.
 5. **Achievements: сортировка** (по прогрессу / tier / названию).
 6. **Party roster: онлайн-индикатор** через WebSocket presence.
+
+---
+Task ID: CRON-7 (webDevReview round 7)
+Agent: orchestrator (z.ai code)
+Task: QA + Runes game difficulty levels + Codex 3D gallery fullscreen + Achievements sorting.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый.
+- Предыдущие раунды добавили: Floating numbers, Codex (filters/sorting/search/badges/species-stats), Keyboard shortcuts, Onboarding, Streak system, 2 мини-игры, Achievements tier filter, Party roster tooltips.
+
+## Выполненные модификации
+
+### 1. Runes game: difficulty levels (новая фича)
+- `src/components/game/MiniGame.tsx`: добавил `Difficulty` type ('easy'|'normal'|'hard') + `DIFFICULTY_CONFIG` (target rounds, runeCount, flashMs, gapMs, label, color).
+  - Easy: 3 раунда, 6 рун, flash 620мс — для новичков.
+  - Normal: 4 раунда, 8 рун, flash 480мс (default).
+  - Hard: 5 раундов, 8 рун, flash 340мс — для опытных.
+- Селектор сложности (3 цветные кнопки) в idle-фазе. Описание показывает runeCount + flashMs.
+- Grid рендерит только `cfg.runeCount` рун. Sequence generation использует `cfg.runeCount`.
+- Верификация: VLM подтвердил селектор (Лёгкий/Обычный/Сложный) с цветными кнопками + сетка рун + "Начать игру" ✓
+
+### 2. Codex: 3D gallery fullscreen (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: добавил `galleryEntry` state. Клик по 3D-превью открытой карточки открывает fullscreen overlay (z-[70], bg-black/85 backdrop-blur).
+  - Large 3D canvas (clamp 300-480px height) с FamiliarCanvas.
+  - Path name (text-glow-arcane) + species/stage badge + visualDescription + зелёная плашка "Скрытый бафф" + pickCount.
+  - Close button (X) + click-outside-to-close + "Вращай мышью" hint.
+  - "🔍 3D" badge появляется на hover превью карточки.
+- Верификация: VLM подтвердил fullscreen overlay с большой 3D-моделью (красный Багровый), названием, описанием, зелёным баффом, кнопкой X ✓
+
+### 3. Achievements: sorting (новая фича)
+- `src/components/game/AchievementsPanel.tsx`: добавил `sortBy` state ('default'|'progress'|'tier'|'name').
+  - default: исходный порядок (по tier из API).
+  - progress: по % прогресса (unlocked=100% первыми).
+  - tier: bronze→silver→gold.
+  - name: по алфавиту (ru locale).
+- Sort control row (4 кнопки) над списком, под tier-strip.
+- Верификация: VLM подтвердил ряд сортировки ✓
+
+### 4. Стиль (mandatory improvement)
+- Runes difficulty: цветные кнопки (зелёный/синий/красный) с active-подсветкой.
+- Codex gallery: arcane-border overlay, glow title, gradient canvas bg, hover "🔍 3D" badge.
+- Achievements sort: компактные chip-кнопки с arcane active.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- Runes difficulty: VLM подтвердил 3 кнопки сложности ✓
+- Codex 3D gallery: VLM подтвердил fullscreen overlay с 3D + баффом ✓
+- Achievements sort: VLM подтвердил ряд сортировки ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка, non-blocking.
+- `frameState.clock` (R3F internal) — Clock deprecation, не фиксится без fork.
+- ВАЖНО: избегать `${a}/${b}` template literals в JSX attributes (SWC bug).
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Element-spotlight tutorial** — pointer на конкретные UI-элементы.
+2. **Sound effect на эволюцию** — усилить.
+3. **Party roster: онлайн-индикатор** через WebSocket presence.
+4. **Codex: сравнение путей** — выбрать 2 для side-by-side 3D.
+5. **Mini-game: третья игра** (reaction/whack-a-mole).
+6. **Achievements: детали в тултипе** при наведении на tier-strip.

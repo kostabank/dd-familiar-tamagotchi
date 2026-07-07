@@ -61,6 +61,7 @@ export function EvolutionCodex() {
   const [onlyDiscovered, setOnlyDiscovered] = useState(false);
   const [sortBy, setSortBy] = useState<'stage' | 'name' | 'discovered'>('stage');
   const [search, setSearch] = useState('');
+  const [galleryEntry, setGalleryEntry] = useState<CodexEntry | null>(null);
 
   useEffect(() => {
     if (!showCodex) return;
@@ -331,14 +332,23 @@ export function EvolutionCodex() {
                             : 'border-white/10 codex-card-locked'
                       }`}
                     >
-                      <div className="h-28 bg-gradient-to-b from-[#0a0a1a] to-[#15152a] relative">
+                      <div
+                        className={`h-28 bg-gradient-to-b from-[#0a0a1a] to-[#15152a] relative ${entry.discovered ? 'cursor-pointer group/canvas' : ''}`}
+                        onClick={entry.discovered ? (e) => { e.stopPropagation(); setGalleryEntry(entry); } : undefined}
+                        title={entry.discovered ? 'Открыть в галерее 3D' : undefined}
+                      >
                         {entry.discovered ? (
-                          <FamiliarCanvas
-                            species={entry.species}
-                            stage={entry.toStage as 1 | 2 | 3}
-                            state="happy"
-                            modelConfigOverride={entry.modelConfig}
-                          />
+                          <>
+                            <FamiliarCanvas
+                              species={entry.species}
+                              stage={entry.toStage as 1 | 2 | 3}
+                              state="happy"
+                              modelConfigOverride={entry.modelConfig}
+                            />
+                            <div className="absolute bottom-1 right-1 opacity-0 group-hover/canvas:opacity-100 transition-opacity pointer-events-none">
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-black/60 backdrop-blur text-arcane border border-arcane/30">🔍 3D</span>
+                            </div>
+                          </>
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
                             <Lock className="h-8 w-8 text-muted-foreground/40" />
@@ -396,6 +406,59 @@ export function EvolutionCodex() {
           Прогресс сохраняется навсегда — даже после сброса фамильяра открытые пути остаются в Кодексе.
         </div>
       </DialogContent>
+
+      {/* Fullscreen 3D gallery overlay */}
+      {galleryEntry && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+          onClick={() => setGalleryEntry(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl rounded-2xl border-2 border-arcane/40 bg-card/95 shadow-2xl overflow-hidden arcane-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setGalleryEntry(null)}
+              className="absolute top-3 right-3 z-10 h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/8 transition-colors"
+              aria-label="Закрыть галерею"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div
+              className="w-full bg-gradient-to-b from-[#0a0a1a] to-[#15152a]"
+              style={{ height: 'clamp(300px, 50vh, 480px)' }}
+            >
+              <FamiliarCanvas
+                species={galleryEntry.species}
+                stage={galleryEntry.toStage as 1 | 2 | 3}
+                state="happy"
+                modelConfigOverride={galleryEntry.modelConfig}
+              />
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-xl font-bold text-arcane text-glow-arcane">{galleryEntry.pathName}</h3>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-arcane/20 text-arcane border border-arcane/40">
+                  {SPECIES_INFO[galleryEntry.species].label} · Стадия {galleryEntry.toStage}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{galleryEntry.visualDescription}</p>
+              <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                <div className="text-[10px] text-emerald-400/70 uppercase tracking-wide mb-0.5">Скрытый бафф</div>
+                <div className="text-sm text-emerald-300">{galleryEntry.hiddenBuff}</div>
+              </div>
+              {galleryEntry.pickCount > 1 && (
+                <div className="text-[11px] text-amber-400/80">
+                  Этот путь выбран ×{galleryEntry.pickCount}
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground/60 italic text-center pt-1">
+                Вращай мышью для обзора · колесо — приближение
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </Dialog>
   );
 }
