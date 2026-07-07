@@ -57,6 +57,7 @@ export function EvolutionCodex() {
   const [data, setData] = useState<CodexData | null>(null);
   const [loading, setLoading] = useState(false);
   const [filterSpecies, setFilterSpecies] = useState<Species | 'all'>('all');
+  const [onlyDiscovered, setOnlyDiscovered] = useState(false);
 
   useEffect(() => {
     if (!showCodex) return;
@@ -80,7 +81,9 @@ export function EvolutionCodex() {
   }, [showCodex]);
 
   const entries = data?.entries ?? [];
-  const visible = filterSpecies === 'all' ? entries : entries.filter((e) => e.species === filterSpecies);
+  const visible = entries
+    .filter((e) => filterSpecies === 'all' || e.species === filterSpecies)
+    .filter((e) => !onlyDiscovered || e.discovered);
   const grouped = SPECIES_ORDER.map((sp) => ({
     species: sp,
     items: visible.filter((e) => e.species === sp),
@@ -147,6 +150,17 @@ export function EvolutionCodex() {
               {SPECIES_INFO[sp].label}
             </button>
           ))}
+          <button
+            onClick={() => setOnlyDiscovered((v) => !v)}
+            className={`ml-auto px-3 py-1 rounded-full text-xs border transition-all flex items-center gap-1 ${
+              onlyDiscovered
+                ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-400'
+                : 'border-white/10 bg-white/5 text-muted-foreground hover:border-emerald-500/40'
+            }`}
+            title="Показать только открытые пути"
+          >
+            <CheckCircle2 className="h-3 w-3" /> Только открытые
+          </button>
         </div>
 
         {/* Grid */}

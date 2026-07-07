@@ -201,7 +201,15 @@ export function useFamiliar() {
     sound.play('quest');
     announceAchievements(data.newAchievements, triggerCelebration);
     announceQuestResult(data, triggerCelebration);
-    toast.success('Бафф дня получен!', { description: `+15 монет, бафф активирован на сегодня` });
+    if (data.streakBonus && data.streakBonus > 0 && data.streakTier) {
+      triggerCelebration?.(data.streakTier.emoji, `Серия ${data.streak} дн. — ${data.streakTier.label}!`, data.streakTier.emoji === '👑' ? '#fbbf24' : '#f97316');
+      toast.success('Бафф дня + бонус серии!', {
+        description: `+15 монет база +${data.streakBonus} бонус серии (${data.streak} дн. — ${data.streakTier.label})`,
+        duration: 7000,
+      });
+    } else {
+      toast.success('Бафф дня получен!', { description: `+15 монет, бафф активирован на сегодня` });
+    }
     return data;
   }, [applyFamiliar, setBuffs, triggerCelebration]);
 

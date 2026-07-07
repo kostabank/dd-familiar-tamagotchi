@@ -40,6 +40,41 @@ export const GAME = {
   GIFT_COOLDOWN_MS: 60 * 1000, // 1 min cooldown per recipient
 } as const;
 
+/** Streak milestone tiers — bonus coins granted when claiming the daily buff
+ *  at or above the given consecutive-day streak. The highest reached tier
+ *  applies (not cumulative). Shown in the DailyBuffPanel as a progress track. */
+export interface StreakTier {
+  days: number;
+  bonus: number;
+  label: string;
+  emoji: string;
+  color: string;
+}
+
+export const STREAK_TIERS: StreakTier[] = [
+  { days: 3, bonus: 10, label: 'Стабильный', emoji: '🔥', color: '#f97316' },
+  { days: 7, bonus: 25, label: 'Неделя силы', emoji: '⚡', color: '#eab308' },
+  { days: 14, bonus: 50, label: 'Две луны', emoji: '🌙', color: '#A855F7' },
+  { days: 30, bonus: 100, label: 'Легенда', emoji: '👑', color: '#fbbf24' },
+];
+
+/** Returns the highest streak tier the player has reached, or null. */
+export function reachedStreakTier(streak: number): StreakTier | null {
+  let hit: StreakTier | null = null;
+  for (const t of STREAK_TIERS) {
+    if (streak >= t.days) hit = t;
+  }
+  return hit;
+}
+
+/** Returns the next streak tier to aim for, or null if all reached. */
+export function nextStreakTier(streak: number): StreakTier | null {
+  for (const t of STREAK_TIERS) {
+    if (streak < t.days) return t;
+  }
+  return null;
+}
+
 export interface GiftType {
   code: string;
   label: string;
