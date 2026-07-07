@@ -30,14 +30,14 @@ import { VolumeControl } from './VolumeControl';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
-import { useSocket } from '@/hooks/use-socket';
+import { useRealtime } from '@/hooks/use-realtime';
 import { SPECIES_INFO, STATE_INFO } from '@/lib/constants';
 import { Battery, Smile, BatteryLow, HeartPulse, Wifi, Coins, LogOut, Sparkles } from 'lucide-react';
 
 export function PlayerDashboard() {
   const { user, familiar, partyResonance, evolving, petEffect, celebration, clearCelebration } = useStore();
   const { doLogout: logout } = useAuth();
-  useSocket();
+  useRealtime();
   const fam = useStore((s) => s.familiar) ?? familiar;
   const [showProfile, setShowProfile] = useState(false);
 

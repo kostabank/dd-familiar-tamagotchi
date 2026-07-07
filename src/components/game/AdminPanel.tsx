@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { useAuth } from '@/hooks/use-auth';
 import { useStore } from '@/lib/store';
-import { useSocket } from '@/hooks/use-socket';
+import { useRealtime } from '@/hooks/use-realtime';
 import { toast } from 'sonner';
 import { SPECIES_INFO, STATE_INFO } from '@/lib/constants';
 import type { AdminFamiliarRow, FamiliarDTO } from '@/lib/types';
@@ -21,7 +21,7 @@ import { VolumeControl } from './VolumeControl';
 
 export function AdminPanel() {
   const { doLogout } = useAuth();
-  useSocket();
+  useRealtime();
   const { partyResonance } = useStore();
   const [rows, setRows] = useState<AdminFamiliarRow[]>([]);
   const [loading, setLoading] = useState(true);

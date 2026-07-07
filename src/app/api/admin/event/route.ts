@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { triggerGlobalEvent } from '@/lib/socket-client';
-
-const ADMIN_SECRET = process.env.ADMIN_EVENT_SECRET || 'dnd-event-secret';
+import { toFamiliarDTO, computePartyResonance } from '@/lib/familiar-logic';
+import { clamp } from '@/lib/constants';
+import { broadcastFamiliarUpdate, broadcastPartyResonance, broadcastAdminEvent } from '@/lib/supabase';
 
 // POST /api/admin/event — DM triggers a global event ('storm' | 'festival').
-// Forwards to the Socket.io service which applies the DB changes + broadcasts.
+// Applies DB changes directly + broadcasts via Supabase Realtime.
 export async function POST(req: NextRequest) {
   try {
     const me = await getCurrentUser();
@@ -17,11 +18,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Неверное событие (storm | festival)' }, { status: 400 });
     }
 
-    const result = await triggerGlobalEvent(event, ADMIN_SECRET);
-    if (!result) {
-      return NextResponse.json({ error: 'Сервис реального времени недоступен' }, { status: 503 });
+    // Apply to all familiars directly.
+    const familiars = await db.familiar.findMany();
+    let affected = 0;
+    for (const f of familiars) {
+      try {
+        const data = event === 'storm' ? { energy: clamp(f.energy - 20) } : { mood: clamp(f.mood + 50) };
+        await db.familiar.update({ where: { id: f.id }, data });
+        await db.interactionLog.create({
+          data: { familiarId: f.id, userId: f.userId, actionType: 'event', detail: `global_event:${event}` },
+        });
+        affected++;
+      } catch {
+        /* skip on error */
+      }
     }
-    return NextResponse.json({ event, affected: result.affected });
+
+    // Broadcast all updated familiars + resonance + event notification.
+    const refreshed = await db.familiar.findMany();
+    for (const f of refreshed) {
+      await broadcastFamiliarUpdate(toFamiliarDTO(f));
+    }
+    const resonance = await computePartyResonance();
+    await broadcastPartyResonance(resonance);
+    await broadcastAdminEvent(event, affected);
+
+    return NextResponse.json({ event, affected });
   } catch (e) {
     console.error('[admin/event]', e);
     return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 });
