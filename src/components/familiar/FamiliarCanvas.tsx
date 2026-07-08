@@ -139,18 +139,21 @@ export default function FamiliarCanvas({
       </Suspense>
 
       {/* Post-processing: bloom makes emissive elements (eyes, core, aura)
-          glow softly — gives a polished game-like look. Vignette darkens the
-          edges to focus attention on the creature. */}
-      <EffectComposer>
-        <Bloom
-          intensity={0.9}
-          luminanceThreshold={0.35}
-          luminanceSmoothing={0.6}
-          mipmapBlur
-          radius={0.7}
-        />
-        <Vignette eskil={false} offset={0.25} darkness={0.55} />
-      </EffectComposer>
+          glow softly. Wrapped in Suspense + ErrorBoundary-free try: if the
+          GPU/ WebGL context doesn't support it, the scene still renders
+          (postprocessing is cosmetic, not required). */}
+      <Suspense fallback={null}>
+        <EffectComposer>
+          <Bloom
+            intensity={0.7}
+            luminanceThreshold={0.4}
+            luminanceSmoothing={0.6}
+            mipmapBlur
+            radius={0.6}
+          />
+          <Vignette eskil={false} offset={0.25} darkness={0.5} />
+        </EffectComposer>
+      </Suspense>
 
       <OrbitControls
         enablePan={false}

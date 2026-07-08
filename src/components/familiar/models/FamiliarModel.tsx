@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { Species, FamiliarState, ModelConfig } from '@/lib/types';
 import { SPECIES_MODEL_DEFAULTS } from '@/lib/species-defaults';
 import ConstructFamiliar from './ConstructFamiliar';
 import DragonFamiliar from './DragonFamiliar';
 import MagpieFamiliar from './MagpieFamiliar';
 import DollFamiliar from './DollFamiliar';
-import SpriteFamiliar from './SpriteFamiliar';
+import GLBFamiliar from './GLBFamiliar';
 import ZParticles from '../ZParticles';
 
 export { SPECIES_MODEL_DEFAULTS };
@@ -20,40 +20,59 @@ interface Props {
 }
 
 /**
- * Dispatcher: renders the familiar using a high-quality pre-generated sprite
- * (default) or falls back to the procedural 3D model.
+ * Dispatcher: renders the familiar as either:
+ *  1. A real 3D .glb model (if /public/models/{species}.glb exists), OR
+ *  2. A procedural 3D model (default fallback).
  *
- * The sprite approach gives much better visual quality than procedural
- * primitives while still living in the 3D scene (billboard, particles,
- * lighting, float/bob animations). Evolution-path colors tint the sprite
- * subtly. Stage 3 adds an aura.
+ * FREE workflow — no paid assets required:
+ *  - Download CC0 low-poly models from quaternius.com / poly.pizza / KayKit.
+ *  - Rename to {species}.glb and drop into /public/models/.
+ *  - The loader auto-detects them via a HEAD request on mount.
+ *  - Evolution-path colors are applied as material tints (no need for 24 models).
+ *  - Optional stage-specific models: {species}-2.glb, {species}-3.glb.
  *
- * To switch back to full 3D procedural models, set USE_SPRITES to false.
+ * Until GLB files are added, the polished procedural models (with bloom)
+ * are used — they look good and cost nothing.
  */
-const USE_SPRITES = false;
-
 export default function FamiliarModel({ species, stage, state, modelConfigOverride }: Props) {
   const config = useMemo<ModelConfig>(() => {
     const base = SPECIES_MODEL_DEFAULTS[species];
     return { ...base, ...(modelConfigOverride ?? {}) };
   }, [species, modelConfigOverride]);
 
+  const [useGLB, setUseGLB] = useState(false);
+
+  // Check once whether a GLB model file exists for this species.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/models/${species}.glb`, { method: 'HEAD' })
+      .then((r) => {
+        if (!cancelled) setUseGLB(r.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setUseGLB(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [species]);
+
   const showZ = state === 'sleeping';
 
-  if (USE_SPRITES) {
+  // GLB model exists → use it.
+  if (useGLB) {
     return (
-      <group>
-        <SpriteFamiliar
-          species={species}
-          stage={stage}
-          state={state}
-          modelConfigOverride={modelConfigOverride}
-        />
-        {showZ && <ZParticles />}
-      </group>
+      <GLBFamiliar
+        species={species}
+        stage={stage}
+        state={state}
+        modelConfigOverride={modelConfigOverride}
+      />
     );
   }
 
+  // Procedural 3D fallback (default — renders immediately).
+  const stageScale = 1 + (stage - 1) * 0.15;
   const renderSpecies = () => {
     switch (species) {
       case 'construct':
@@ -68,9 +87,6 @@ export default function FamiliarModel({ species, stage, state, modelConfigOverri
         return null;
     }
   };
-
-  // Stage bumps overall scale by 18% per stage above 1 (sprites use their own scaling).
-  const stageScale = 1 + (stage - 1) * 0.15;
 
   return (
     <group scale={stageScale}>
