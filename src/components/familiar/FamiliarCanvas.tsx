@@ -55,25 +55,29 @@ export default function FamiliarCanvas({
   return (
     <Canvas
       shadows="percentage"
-      camera={{ position: [0, 1, 5], fov: 45 }}
+      camera={{ position: [0, 0.6, 3.6], fov: 42 }}
       dpr={[1, 2]}
       style={{ width: '100%', height: '100%', display: 'block' }}
     >
       <color attach="background" args={['#0F0F1A']} />
-      <fog attach="fog" args={['#0F0F1A', 8, 18]} />
+      <fog attach="fog" args={['#0F0F1A', 9, 20]} />
 
-      {/* Lighting rig — dark-fantasy key + cool rim + purple accent */}
-      <ambientLight intensity={0.3} />
+      {/* Lighting rig — key + rim + fill for a polished, dimensional look */}
+      <ambientLight intensity={0.45} />
+      {/* Key light — warm-ish, front-right above */}
       <spotLight
-        position={[5, 8, 5]}
-        angle={0.3}
+        position={[4, 6, 5]}
+        angle={0.4}
         penumbra={1}
-        intensity={1.5}
+        intensity={2.0}
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
       />
-      <pointLight position={[-5, 3, -5]} intensity={0.6} color="#A855F7" />
+      {/* Rim light — behind/above to define the silhouette edge */}
+      <spotLight position={[0, 5, -4]} angle={0.5} penumbra={1} intensity={1.6} color={modelConfigOverride?.emissiveColor ?? '#A855F7'} />
+      {/* Fill light — cool, left, to soften shadows */}
+      <pointLight position={[-4, 2, 3]} intensity={0.5} color="#60A5FA" />
 
       {/* Ambient drifting sparkle dust for atmosphere — density scales with stage */}
       <Sparkles
@@ -135,12 +139,12 @@ export default function FamiliarCanvas({
 
       <OrbitControls
         enablePan={false}
-        minDistance={3}
-        maxDistance={8}
+        minDistance={2.2}
+        maxDistance={6}
         minPolarAngle={0.5}
         maxPolarAngle={Math.PI / 2 + 0.3}
         autoRotate
-        autoRotateSpeed={0.6}
+        autoRotateSpeed={0.5}
         enableDamping
         dampingFactor={0.08}
         enabled={!evolving}

@@ -7,6 +7,7 @@ import ConstructFamiliar from './ConstructFamiliar';
 import DragonFamiliar from './DragonFamiliar';
 import MagpieFamiliar from './MagpieFamiliar';
 import DollFamiliar from './DollFamiliar';
+import SpriteFamiliar from './SpriteFamiliar';
 import ZParticles from '../ZParticles';
 
 export { SPECIES_MODEL_DEFAULTS };
@@ -19,24 +20,39 @@ interface Props {
 }
 
 /**
- * Dispatcher: merges default ModelConfig for the species with any override,
- * applies the stage-based extra scale (1 + (stage-1)*0.15), renders the
- * species-specific model, and overlays ZParticles while sleeping.
+ * Dispatcher: renders the familiar using a high-quality pre-generated sprite
+ * (default) or falls back to the procedural 3D model.
  *
- * The species components receive `stage` directly so they can grow extra
- * geometry (horns, crest, aura, sigil, …) at higher stages — this drives the
- * "thoughtful evolution" visual progression.
+ * The sprite approach gives much better visual quality than procedural
+ * primitives while still living in the 3D scene (billboard, particles,
+ * lighting, float/bob animations). Evolution-path colors tint the sprite
+ * subtly. Stage 3 adds an aura.
+ *
+ * To switch back to full 3D procedural models, set USE_SPRITES to false.
  */
+const USE_SPRITES = true;
+
 export default function FamiliarModel({ species, stage, state, modelConfigOverride }: Props) {
   const config = useMemo<ModelConfig>(() => {
     const base = SPECIES_MODEL_DEFAULTS[species];
     return { ...base, ...(modelConfigOverride ?? {}) };
   }, [species, modelConfigOverride]);
 
-  // Stage bumps overall scale by 15% per stage above 1.
-  const stageScale = 1 + (stage - 1) * 0.15;
-
   const showZ = state === 'sleeping';
+
+  if (USE_SPRITES) {
+    return (
+      <group>
+        <SpriteFamiliar
+          species={species}
+          stage={stage}
+          state={state}
+          modelConfigOverride={modelConfigOverride}
+        />
+        {showZ && <ZParticles />}
+      </group>
+    );
+  }
 
   const renderSpecies = () => {
     switch (species) {
@@ -52,6 +68,9 @@ export default function FamiliarModel({ species, stage, state, modelConfigOverri
         return null;
     }
   };
+
+  // Stage bumps overall scale by 18% per stage above 1 (sprites use their own scaling).
+  const stageScale = 1 + (stage - 1) * 0.15;
 
   return (
     <group scale={stageScale}>
