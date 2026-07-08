@@ -30,7 +30,7 @@ interface Props {
  *
  * To switch back to full 3D procedural models, set USE_SPRITES to false.
  */
-const USE_SPRITES = true;
+const USE_SPRITES = false;
 
 export default function FamiliarModel({ species, stage, state, modelConfigOverride }: Props) {
   const config = useMemo<ModelConfig>(() => {

@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Environment, ContactShadows, OrbitControls, Sparkles } from '@react-three/drei';
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import type { Species, FamiliarState, ModelConfig } from '@/lib/types';
 import FamiliarModel from './models/FamiliarModel';
 import EvolutionAnimation from './EvolutionAnimation';
@@ -136,6 +137,20 @@ export default function FamiliarCanvas({
       <Suspense fallback={null}>
         <Environment preset="night" />
       </Suspense>
+
+      {/* Post-processing: bloom makes emissive elements (eyes, core, aura)
+          glow softly — gives a polished game-like look. Vignette darkens the
+          edges to focus attention on the creature. */}
+      <EffectComposer>
+        <Bloom
+          intensity={0.9}
+          luminanceThreshold={0.35}
+          luminanceSmoothing={0.6}
+          mipmapBlur
+          radius={0.7}
+        />
+        <Vignette eskil={false} offset={0.25} darkness={0.55} />
+      </EffectComposer>
 
       <OrbitControls
         enablePan={false}
