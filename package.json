@@ -9,9 +9,9 @@
     "start": "next start",
     "lint": "eslint .",
     "db:push": "prisma db push",
-    "db:push:prod": "prisma db push --schema prisma/schema.prod.prisma",
+    "db:push:dev": "prisma db push --schema prisma/schema.dev.prisma",
     "db:generate": "prisma generate",
-    "db:generate:prod": "prisma generate --schema prisma/schema.prod.prisma",
+    "db:generate:dev": "prisma generate --schema prisma/schema.dev.prisma",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "seed": "bun run prisma/seed.ts && bun run prisma/seed-achievements.ts"

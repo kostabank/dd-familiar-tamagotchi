@@ -1,0 +1,35 @@
+name: Hourly Familiar Tick
+
+# Runs every hour to apply decay to all familiars (Europe/Moscow time logic).
+# Vercel Hobby tier only supports daily cron, so we use GitHub Actions (free).
+# The tick endpoint at /api/cron/tick is protected by CRON_SECRET.
+
+on:
+  schedule:
+    # Run at minute 0 of every hour (UTC). The decay logic inside uses
+    # Europe/Moscow timezone via Luxon, so timing is correct regardless.
+    - cron: '0 * * * *'
+  # Allow manual triggering for testing
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger cron tick endpoint
+        run: |
+          echo "Triggering hourly tick at $(date -u '+%Y-%m-%d %H:%M:%S UTC')..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.VERCEL_APP_URL }}/api/cron/tick" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response body: $BODY"
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Tick succeeded"
+          else
+            echo "❌ Tick failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
