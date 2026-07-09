@@ -15,6 +15,7 @@ import { CloudLightning, PartyPopper, LogOut, RefreshCw, Users, ShieldPlus } fro
 import { LiveClock } from './LiveClock';
 import { AmbientBackground } from './AmbientBackground';
 import { DmQuestPanel } from './DmQuestPanel';
+import { DmEvolutionCodex } from './DmEvolutionCodex';
 import { SoundToggle } from './SoundToggle';
 import { MusicTrackSelector } from './MusicTrackSelector';
 import { VolumeControl } from './VolumeControl';
@@ -236,6 +237,9 @@ export function AdminPanel() {
 
         {/* DM Quest management */}
         <DmQuestPanel />
+
+        {/* DM Evolution Codex — preview all 24 evolution paths */}
+        <DmEvolutionCodex />
 
         {/* Players table */}
         <Card className="arcane-border">
