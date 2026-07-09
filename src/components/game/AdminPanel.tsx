@@ -11,7 +11,7 @@ import { useRealtime } from '@/hooks/use-realtime';
 import { toast } from 'sonner';
 import { SPECIES_INFO, STATE_INFO } from '@/lib/constants';
 import type { AdminFamiliarRow, FamiliarDTO } from '@/lib/types';
-import { CloudLightning, PartyPopper, LogOut, RefreshCw, Users } from 'lucide-react';
+import { CloudLightning, PartyPopper, LogOut, RefreshCw, Users, ShieldPlus } from 'lucide-react';
 import { LiveClock } from './LiveClock';
 import { AmbientBackground } from './AmbientBackground';
 import { DmQuestPanel } from './DmQuestPanel';
@@ -28,6 +28,12 @@ export function AdminPanel() {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<Record<string, Partial<FamiliarDTO>>>({});
 
+  // Create-DM form state
+  const [showCreateDM, setShowCreateDM] = useState(false);
+  const [dmUser, setDmUser] = useState('');
+  const [dmPass, setDmPass] = useState('');
+  const [dmChar, setDmChar] = useState('');
+  const [dmBusy, setDmBusy] = useState(false);
   const refresh = useCallback(async () => {
     setLoading(true);
     const res = await fetch('/api/admin/familiars', { credentials: 'same-origin' });
@@ -92,6 +98,32 @@ export function AdminPanel() {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...data.familiar } : r)));
   };
 
+  const createDM = async () => {
+    if (!dmUser || !dmPass) {
+      toast.error('Логин и пароль обязательны');
+      return;
+    }
+    setDmBusy(true);
+    try {
+      const res = await fetch('/api/admin/create-dm', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: dmUser, password: dmPass, characterName: dmChar }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Не удалось создать Мастера');
+        return;
+      }
+      toast.success(`Мастер «${data.user.username}» создан!`);
+      setDmUser(''); setDmPass(''); setDmChar('');
+      setShowCreateDM(false);
+    } finally {
+      setDmBusy(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <AmbientBackground />
@@ -148,6 +180,57 @@ export function AdminPanel() {
             >
               <PartyPopper className="h-4 w-4" /> Праздник (+50 настроения всем)
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Create new DM (admin) — only existing DMs can do this */}
+        <Card className="arcane-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <ShieldPlus className="h-4 w-4 text-arcane" /> Управление Мастерами
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!showCreateDM ? (
+              <Button onClick={() => setShowCreateDM(true)} variant="outline" size="sm">
+                <ShieldPlus className="h-4 w-4" /> Создать нового Мастера
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:border-arcane/50 outline-none"
+                    placeholder="Логин нового Мастера"
+                    value={dmUser}
+                    onChange={(e) => setDmUser(e.target.value)}
+                  />
+                  <input
+                    type="password"
+                    className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:border-arcane/50 outline-none"
+                    placeholder="Пароль (≥ 6 символов)"
+                    value={dmPass}
+                    onChange={(e) => setDmPass(e.target.value)}
+                  />
+                  <input
+                    className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:border-arcane/50 outline-none"
+                    placeholder="Имя (необязательно)"
+                    value={dmChar}
+                    onChange={(e) => setDmChar(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={createDM} disabled={dmBusy} size="sm" className="bg-arcane hover:bg-arcane/80">
+                    {dmBusy ? 'Создаём...' : 'Создать Мастера'}
+                  </Button>
+                  <Button onClick={() => setShowCreateDM(false)} variant="ghost" size="sm">
+                    Отмена
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Новый Мастер получит доступ к этой панели. Игроки не могут стать Мастерами самостоятельно.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

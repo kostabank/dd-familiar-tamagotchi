@@ -25,8 +25,8 @@ export function AuthScreen() {
   const [tab, setTab] = useState<'login' | 'register'>('login');
 
   // login form
-  const [loginUser, setLoginUser] = useState('dm');
-  const [loginPass, setLoginPass] = useState('dmdnd123');
+  const [loginUser, setLoginUser] = useState('');
+  const [loginPass, setLoginPass] = useState('');
 
   // register form
   const [regUser, setRegUser] = useState('');
@@ -34,8 +34,6 @@ export function AuthScreen() {
   const [regChar, setRegChar] = useState('');
   const [regSpecies, setRegSpecies] = useState<Species>('dragon');
   const [regFamiliarName, setRegFamiliarName] = useState('');
-  const [isDM, setIsDM] = useState(false);
-  const [dmCode, setDmCode] = useState('');
   const [busy, setBusy] = useState(false);
 
   const doLogin = async () => {
@@ -72,8 +70,6 @@ export function AuthScreen() {
           characterName: regChar,
           species: regSpecies,
           familiarName: regFamiliarName,
-          role: isDM ? 'dm' : 'player',
-          dmCode,
         }),
       });
       const data = await res.json();
@@ -117,19 +113,15 @@ export function AuthScreen() {
               <TabsContent value="login" className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="lu">Имя пользователя</Label>
-                  <Input id="lu" value={loginUser} onChange={(e) => setLoginUser(e.target.value)} placeholder="dm" />
+                  <Input id="lu" value={loginUser} onChange={(e) => setLoginUser(e.target.value)} placeholder="ваш логин" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lp">Пароль</Label>
-                  <Input id="lp" type="password" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} />
+                  <Input id="lp" type="password" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} placeholder="••••••" />
                 </div>
                 <Button onClick={doLogin} disabled={busy} className="w-full">
                   {busy ? 'Входим...' : 'Войти'}
                 </Button>
-                <div className="text-xs text-muted-foreground text-center space-y-0.5">
-                  <p>Демо-Мастер: <span className="font-mono text-arcane">dm / dmdnd123</span></p>
-                  <p>Демо-Игрок: <span className="font-mono text-arcane">raven / pass1234</span></p>
-                </div>
               </TabsContent>
 
               <TabsContent value="register" className="space-y-4 mt-4">
@@ -148,11 +140,9 @@ export function AuthScreen() {
                   <Input id="rc" value={regChar} onChange={(e) => setRegChar(e.target.value)} placeholder="Эльра Старшая" />
                 </div>
 
-                {!isDM && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Вид фамильяра</Label>
-                      {/* Live 3D preview of the selected species */}
+                <div className="space-y-2">
+                  <Label htmlFor="rs">Вид фамильяра</Label>
+                  {/* Live 3D preview of the selected species */}
                       <div
                         className="relative rounded-xl overflow-hidden border bg-gradient-to-b from-[#0a0a1a] to-[#15152a] scanlines h-44"
                         style={{
@@ -202,25 +192,6 @@ export function AuthScreen() {
                       <Label htmlFor="rfn">Имя фамильяра</Label>
                       <Input id="rfn" value={regFamiliarName} onChange={(e) => setRegFamiliarName(e.target.value)} placeholder="Искра" />
                     </div>
-                  </>
-                )}
-
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isDM}
-                    onChange={(e) => setIsDM(e.target.checked)}
-                    className="accent-arcane"
-                  />
-                  Я Мастер Подземелий
-                </label>
-                {isDM && (
-                  <div className="space-y-2">
-                    <Label htmlFor="dmc">Код Мастера</Label>
-                    <Input id="dmc" value={dmCode} onChange={(e) => setDmCode(e.target.value)} placeholder="dungeon-master-2024" />
-                    <p className="text-[10px] text-muted-foreground">Код: <span className="font-mono">dungeon-master-2024</span></p>
-                  </div>
-                )}
 
                 <Button onClick={doRegister} disabled={busy} className="w-full">
                   {busy ? 'Создаём...' : 'Создать персонажа'}
