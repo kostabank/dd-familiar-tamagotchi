@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS "Familiar" (
     CONSTRAINT "Familiar_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "Familiar_userId_key" ON "Familiar"("userId");
-ALTER TABLE "Familiar" ADD CONSTRAINT "Familiar_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE;
+DO $$ BEGIN ALTER TABLE "Familiar" ADD CONSTRAINT "Familiar_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Add modelConfig column if the table exists without it (migration for old DBs)
 DO $$
@@ -78,8 +78,8 @@ CREATE TABLE IF NOT EXISTS "InteractionLog" (
     "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "InteractionLog_pkey" PRIMARY KEY ("id")
 );
-ALTER TABLE "InteractionLog" ADD CONSTRAINT "InteractionLog_familiarId_fkey" FOREIGN KEY ("familiarId") REFERENCES "Familiar"("id") ON DELETE CASCADE;
-ALTER TABLE "InteractionLog" ADD CONSTRAINT "InteractionLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE;
+DO $$ BEGIN ALTER TABLE "InteractionLog" ADD CONSTRAINT "InteractionLog_familiarId_fkey" FOREIGN KEY ("familiarId") REFERENCES "Familiar"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "InteractionLog" ADD CONSTRAINT "InteractionLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS "DailyBuffClaim" (
     "id" TEXT NOT NULL,
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS "DailyBuffClaim" (
     CONSTRAINT "DailyBuffClaim_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "DailyBuffClaim_userId_key" ON "DailyBuffClaim"("userId");
-ALTER TABLE "DailyBuffClaim" ADD CONSTRAINT "DailyBuffClaim_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE;
+DO $$ BEGIN ALTER TABLE "DailyBuffClaim" ADD CONSTRAINT "DailyBuffClaim_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS "Achievement" (
     "id" TEXT NOT NULL,
@@ -113,8 +113,8 @@ CREATE TABLE IF NOT EXISTS "PlayerAchievement" (
     CONSTRAINT "PlayerAchievement_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "PlayerAchievement_userId_achievementId_key" ON "PlayerAchievement"("userId", "achievementId");
-ALTER TABLE "PlayerAchievement" ADD CONSTRAINT "PlayerAchievement_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE;
-ALTER TABLE "PlayerAchievement" ADD CONSTRAINT "PlayerAchievement_achievementId_fkey" FOREIGN KEY ("achievementId") REFERENCES "Achievement"("id") ON DELETE CASCADE;
+DO $$ BEGIN ALTER TABLE "PlayerAchievement" ADD CONSTRAINT "PlayerAchievement_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "PlayerAchievement" ADD CONSTRAINT "PlayerAchievement_achievementId_fkey" FOREIGN KEY ("achievementId") REFERENCES "Achievement"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS "Quest" (
     "id" TEXT NOT NULL,
@@ -139,8 +139,8 @@ CREATE TABLE IF NOT EXISTS "PlayerQuest" (
     CONSTRAINT "PlayerQuest_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "PlayerQuest_userId_questId_key" ON "PlayerQuest"("userId", "questId");
-ALTER TABLE "PlayerQuest" ADD CONSTRAINT "PlayerQuest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE;
-ALTER TABLE "PlayerQuest" ADD CONSTRAINT "PlayerQuest_questId_fkey" FOREIGN KEY ("questId") REFERENCES "Quest"("id") ON DELETE CASCADE;
+DO $$ BEGIN ALTER TABLE "PlayerQuest" ADD CONSTRAINT "PlayerQuest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE "PlayerQuest" ADD CONSTRAINT "PlayerQuest_questId_fkey" FOREIGN KEY ("questId") REFERENCES "Quest"("id") ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS "Gift" (
     "id" TEXT NOT NULL,
