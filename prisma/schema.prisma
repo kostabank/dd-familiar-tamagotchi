@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -60,7 +61,7 @@ model EvolutionOption {
   pathName          String  // e.g. 'Сентинель', 'Архонт'
   visualDescription String
   hiddenBuff        String  // not shown to player until chosen
-  modelConfig       String?  // JSON string with 3D params (color, emissive, scale...)
+  modelConfig       String  // JSON string with 3D params (color, emissive, scale...)
 }
 
 model InteractionLog {
