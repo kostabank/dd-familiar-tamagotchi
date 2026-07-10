@@ -18,8 +18,8 @@ export function AuthScreen() {
   const [tab, setTab] = useState<'login' | 'register'>('login');
 
   // login form
-  const [loginUser, setLoginUser] = useState('dm');
-  const [loginPass, setLoginPass] = useState('dmdnd123');
+  const [loginUser, setLoginUser] = useState('');
+  const [loginPass, setLoginPass] = useState('');
 
   // register form
   const [regUser, setRegUser] = useState('');
@@ -32,13 +32,17 @@ export function AuthScreen() {
   const [busy, setBusy] = useState(false);
 
   const doLogin = async () => {
+    if (!loginUser.trim() || !loginPass.trim()) {
+      toast.error('Заполни логин и пароль');
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUser, password: loginPass }),
+        body: JSON.stringify({ username: loginUser.trim(), password: loginPass }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -47,12 +51,26 @@ export function AuthScreen() {
       }
       setAuth(data.user, data.familiar);
       toast.success(`С возвращением, ${data.user.username}!`);
+    } catch {
+      toast.error('Сеть недоступна');
     } finally {
       setBusy(false);
     }
   };
 
   const doRegister = async () => {
+    if (!regUser.trim() || !regPass.trim()) {
+      toast.error('Заполни логин и пароль');
+      return;
+    }
+    if (regUser.trim().length < 3) {
+      toast.error('Логин минимум 3 символа');
+      return;
+    }
+    if (regPass.length < 6) {
+      toast.error('Пароль минимум 6 символов');
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch('/api/auth/register', {
@@ -60,13 +78,13 @@ export function AuthScreen() {
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: regUser,
+          username: regUser.trim(),
           password: regPass,
-          characterName: regChar,
+          characterName: regChar.trim() || undefined,
           species: regSpecies,
-          familiarName: regFamiliarName,
+          familiarName: regFamiliarName.trim() || undefined,
           role: isDM ? 'dm' : 'player',
-          dmCode,
+          dmCode: dmCode.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -76,6 +94,8 @@ export function AuthScreen() {
       }
       setAuth(data.user, data.familiar);
       toast.success('Аккаунт создан!');
+    } catch {
+      toast.error('Сеть недоступна');
     } finally {
       setBusy(false);
     }
@@ -107,34 +127,68 @@ export function AuthScreen() {
               <TabsContent value="login" className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="lu">Имя пользователя</Label>
-                  <Input id="lu" value={loginUser} onChange={(e) => setLoginUser(e.target.value)} placeholder="dm" />
+                  <Input
+                    id="lu"
+                    value={loginUser}
+                    onChange={(e) => setLoginUser(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && doLogin()}
+                    placeholder="Введи логин"
+                    autoComplete="username"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lp">Пароль</Label>
-                  <Input id="lp" type="password" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} />
+                  <Input
+                    id="lp"
+                    type="password"
+                    value={loginPass}
+                    onChange={(e) => setLoginPass(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && doLogin()}
+                    placeholder="Введи пароль"
+                    autoComplete="current-password"
+                  />
                 </div>
                 <Button onClick={doLogin} disabled={busy} className="w-full">
                   {busy ? 'Входим...' : 'Войти'}
                 </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Демо-Мастер: <span className="font-mono text-arcane">dm / dmdnd123</span>
-                </p>
+                <div className="text-xs text-muted-foreground text-center space-y-1">
+                  <p>Демо-Мастер: <button onClick={() => { setLoginUser('dm'); setLoginPass('dmdmd123'); }} className="font-mono text-arcane hover:underline cursor-pointer">dm / dmdmd123</button></p>
+                  <p className="text-[10px]">Нажми на логин, чтобы заполнить автоматически</p>
+                </div>
               </TabsContent>
 
               <TabsContent value="register" className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="ru">Логин</Label>
-                    <Input id="ru" value={regUser} onChange={(e) => setRegUser(e.target.value)} placeholder="hero" />
+                    <Input
+                      id="ru"
+                      value={regUser}
+                      onChange={(e) => setRegUser(e.target.value)}
+                      placeholder="hero"
+                      autoComplete="username"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="rp">Пароль</Label>
-                    <Input id="rp" type="password" value={regPass} onChange={(e) => setRegPass(e.target.value)} placeholder="≥ 6 символов" />
+                    <Input
+                      id="rp"
+                      type="password"
+                      value={regPass}
+                      onChange={(e) => setRegPass(e.target.value)}
+                      placeholder="≥ 6 символов"
+                      autoComplete="new-password"
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rc">Имя персонажа</Label>
-                  <Input id="rc" value={regChar} onChange={(e) => setRegChar(e.target.value)} placeholder="Эльра Старшая" />
+                  <Input
+                    id="rc"
+                    value={regChar}
+                    onChange={(e) => setRegChar(e.target.value)}
+                    placeholder="Эльра Старшая"
+                  />
                 </div>
 
                 {!isDM && (
@@ -161,7 +215,12 @@ export function AuthScreen() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="rfn">Имя фамильяра</Label>
-                      <Input id="rfn" value={regFamiliarName} onChange={(e) => setRegFamiliarName(e.target.value)} placeholder="Искра" />
+                      <Input
+                        id="rfn"
+                        value={regFamiliarName}
+                        onChange={(e) => setRegFamiliarName(e.target.value)}
+                        placeholder="Искра"
+                      />
                     </div>
                   </>
                 )}
@@ -178,7 +237,12 @@ export function AuthScreen() {
                 {isDM && (
                   <div className="space-y-2">
                     <Label htmlFor="dmc">Код Мастера</Label>
-                    <Input id="dmc" value={dmCode} onChange={(e) => setDmCode(e.target.value)} placeholder="dungeon-master-2024" />
+                    <Input
+                      id="dmc"
+                      value={dmCode}
+                      onChange={(e) => setDmCode(e.target.value)}
+                      placeholder="dungeon-master-2024"
+                    />
                     <p className="text-[10px] text-muted-foreground">Код: <span className="font-mono">dungeon-master-2024</span></p>
                   </div>
                 )}
