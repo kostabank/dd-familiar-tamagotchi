@@ -45,6 +45,7 @@ model Familiar {
   coins          Int      @default(50)
   accentColor    String?  // custom accent color (hex), unlockable after Stage 2
   bio            String?  // player-written familiar backstory (max 500 chars)
+  modelConfig    String?  // JSON string with 3D params (colors, ornaments, aura) — persisted on evolve
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -59,7 +60,7 @@ model EvolutionOption {
   pathName          String  // e.g. 'Сентинель', 'Архонт'
   visualDescription String
   hiddenBuff        String  // not shown to player until chosen
-  modelConfig       String  // JSON string with 3D params (color, emissive, scale...)
+  modelConfig       String?  // JSON string with 3D params (color, emissive, scale...)
 }
 
 model InteractionLog {

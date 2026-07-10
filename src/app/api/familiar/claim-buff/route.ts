@@ -11,8 +11,9 @@ import {
   checkAndUnlockAchievements,
   grantAchievementRewards,
   progressQuest,
+  computeStreakDays,
 } from '@/lib/familiar-logic';
-import { GAME, clamp } from '@/lib/constants';
+import { GAME, clamp, reachedStreakTier } from '@/lib/constants';
 import { broadcastFamiliarUpdate } from '@/lib/socket-client';
 
 // POST /api/familiar/claim-buff — claim the once-daily (Moscow day) stage buff.
@@ -34,15 +35,27 @@ export async function POST() {
     }
 
     await recordDailyClaim(me.id);
+    // Compute streak bonus — extra coins for consecutive-day activity.
+    const streak = await computeStreakDays(me.id);
+    const streakTier = reachedStreakTier(streak);
+    const streakBonus = streakTier?.bonus ?? 0;
+    const totalCoins = GAME.DAILY_CLAIM_COIN_REWARD + streakBonus;
     const updated = await db.familiar.update({
       where: { id: familiar.id },
       data: {
-        coins: familiar.coins + GAME.DAILY_CLAIM_COIN_REWARD,
+        coins: familiar.coins + totalCoins,
         mood: clamp(familiar.mood + 10),
       },
     });
     await db.interactionLog.create({
-      data: { familiarId: familiar.id, userId: me.id, actionType: 'claim_buff', detail: `daily buff #${status.claimCount + 1}` },
+      data: {
+        familiarId: familiar.id,
+        userId: me.id,
+        actionType: 'claim_buff',
+        detail: streakBonus > 0
+          ? `daily buff #${status.claimCount + 1} +${GAME.DAILY_CLAIM_COIN_REWARD} base +${streakBonus} streak (${streak}d, ${streakTier!.label})`
+          : `daily buff #${status.claimCount + 1} +${GAME.DAILY_CLAIM_COIN_REWARD} base`,
+      },
     });
 
     const newlyUnlocked = await checkAndUnlockAchievements(me.id);
@@ -54,6 +67,9 @@ export async function POST() {
     await broadcastFamiliarUpdate(dto);
     return NextResponse.json({
       familiar: dto, buffs, claimed: true,
+      streak,
+      streakBonus,
+      streakTier: streakTier ? { days: streakTier.days, bonus: streakTier.bonus, label: streakTier.label, emoji: streakTier.emoji } : null,
       newAchievements: newlyUnlocked,
       achievementCoins: rewardCoins,
       quest: questResult.quest,

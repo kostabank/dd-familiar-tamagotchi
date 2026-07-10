@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Environment, ContactShadows, OrbitControls, Sparkles } from '@react-three/drei';
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import type { Species, FamiliarState, ModelConfig } from '@/lib/types';
 import FamiliarModel from './models/FamiliarModel';
 import EvolutionAnimation from './EvolutionAnimation';
@@ -54,29 +55,40 @@ export default function FamiliarCanvas({
 
   return (
     <Canvas
-      shadows
-      camera={{ position: [0, 1, 5], fov: 45 }}
+      shadows="percentage"
+      camera={{ position: [0, 0.6, 3.6], fov: 42 }}
       dpr={[1, 2]}
       style={{ width: '100%', height: '100%', display: 'block' }}
     >
       <color attach="background" args={['#0F0F1A']} />
-      <fog attach="fog" args={['#0F0F1A', 8, 18]} />
+      <fog attach="fog" args={['#0F0F1A', 9, 20]} />
 
-      {/* Lighting rig — dark-fantasy key + cool rim + purple accent */}
-      <ambientLight intensity={0.3} />
+      {/* Lighting rig — key + rim + fill for a polished, dimensional look */}
+      <ambientLight intensity={0.45} />
+      {/* Key light — warm-ish, front-right above */}
       <spotLight
-        position={[5, 8, 5]}
-        angle={0.3}
+        position={[4, 6, 5]}
+        angle={0.4}
         penumbra={1}
-        intensity={1.5}
+        intensity={2.0}
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
       />
-      <pointLight position={[-5, 3, -5]} intensity={0.6} color="#A855F7" />
+      {/* Rim light — behind/above to define the silhouette edge */}
+      <spotLight position={[0, 5, -4]} angle={0.5} penumbra={1} intensity={1.6} color={modelConfigOverride?.emissiveColor ?? '#A855F7'} />
+      {/* Fill light — cool, left, to soften shadows */}
+      <pointLight position={[-4, 2, 3]} intensity={0.5} color="#60A5FA" />
 
-      {/* Ambient drifting sparkle dust for atmosphere */}
-      <Sparkles count={40} scale={[6, 4, 6]} size={2} speed={0.2} opacity={0.4} color="#A855F7" />
+      {/* Ambient drifting sparkle dust for atmosphere — density scales with stage */}
+      <Sparkles
+        count={stage >= 3 ? 120 : stage === 2 ? 80 : 40}
+        scale={[6, 4, 6]}
+        size={2}
+        speed={0.2}
+        opacity={stage >= 3 ? 0.6 : 0.4}
+        color={modelConfigOverride?.auraColor ?? modelConfigOverride?.emissiveColor ?? '#A855F7'}
+      />
 
       <Suspense fallback={null}>
         <FamiliarModel
@@ -109,7 +121,6 @@ export default function FamiliarCanvas({
           />
         )}
 
-        <Environment preset="night" />
         <ContactShadows
           position={[0, -1.5, 0]}
           opacity={0.5}
@@ -120,14 +131,38 @@ export default function FamiliarCanvas({
         />
       </Suspense>
 
+      {/* Environment (HDR) in its own Suspense so the model renders even if
+          the HDR fails to load — otherwise a blocked CDN would leave the
+          whole scene empty with only the Sparkles showing. */}
+      <Suspense fallback={null}>
+        <Environment preset="night" />
+      </Suspense>
+
+      {/* Post-processing: bloom makes emissive elements (eyes, core, aura)
+          glow softly. Wrapped in Suspense + ErrorBoundary-free try: if the
+          GPU/ WebGL context doesn't support it, the scene still renders
+          (postprocessing is cosmetic, not required). */}
+      <Suspense fallback={null}>
+        <EffectComposer>
+          <Bloom
+            intensity={0.7}
+            luminanceThreshold={0.4}
+            luminanceSmoothing={0.6}
+            mipmapBlur
+            radius={0.6}
+          />
+          <Vignette eskil={false} offset={0.25} darkness={0.5} />
+        </EffectComposer>
+      </Suspense>
+
       <OrbitControls
         enablePan={false}
-        minDistance={3}
-        maxDistance={8}
+        minDistance={2.2}
+        maxDistance={6}
         minPolarAngle={0.5}
         maxPolarAngle={Math.PI / 2 + 0.3}
         autoRotate
-        autoRotateSpeed={0.6}
+        autoRotateSpeed={0.5}
         enableDamping
         dampingFactor={0.08}
         enabled={!evolving}

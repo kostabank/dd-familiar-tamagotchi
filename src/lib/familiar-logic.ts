@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import { db } from './db';
 import { GAME, clamp } from './constants';
-import type { FamiliarDTO, FamiliarState, Species, BuffSummary, PartyResonance } from './types';
+import type { FamiliarDTO, FamiliarState, ModelConfig, Species, BuffSummary, PartyResonance } from './types';
 
 // All time math uses Europe/Moscow zone, as required.
 const MOSCOW_ZONE = 'Europe/Moscow';
@@ -186,6 +186,7 @@ export function toFamiliarDTO(f: {
   coins: number;
   accentColor?: string | null;
   bio?: string | null;
+  modelConfig?: string | null;
 }): FamiliarDTO {
   return {
     id: f.id,
@@ -206,8 +207,26 @@ export function toFamiliarDTO(f: {
     coins: f.coins,
     accentColor: f.accentColor ?? null,
     bio: f.bio ?? null,
+    modelConfig: parseModelConfig(f.modelConfig),
     state: deriveState(f),
   };
+}
+
+/**
+ * Parse a stored `modelConfig` JSON string into a ModelConfig object.
+ * Returns null for missing/invalid JSON so the client can fall back to the
+ * species defaults from SPECIES_MODEL_DEFAULTS.
+ */
+export function parseModelConfig(raw: string | null | undefined): ModelConfig | null {
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    if (typeof parsed.primaryColor !== 'string' || typeof parsed.emissiveColor !== 'string') return null;
+    return parsed as ModelConfig;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -349,6 +368,17 @@ export async function computeAchievementMetrics(userId: string): Promise<Record<
     stage: familiar.stage,
     gift_count,
   };
+}
+
+/** Returns true if the player has logged at least one action today (Moscow day). */
+export async function hasActionToday(userId: string): Promise<boolean> {
+  const today = todayMoscowDate();
+  const startOfToday = nowMoscow().startOf('day').toJSDate();
+  const count = await db.interactionLog.count({
+    where: { userId, timestamp: { gte: startOfToday } },
+  });
+  void today;
+  return count > 0;
 }
 
 /**
@@ -500,6 +530,8 @@ const QUEST_METRIC_LABELS: Record<string, string> = {
   feed: 'Кормить',
   play: 'Играть',
   pet: 'Гладить',
+  sleep: 'Усыплять',
+  wake: 'Будить',
   claim_buff: 'Получить бафф дня',
   evolve: 'Эволюционировать',
 };

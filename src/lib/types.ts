@@ -30,6 +30,7 @@ export interface FamiliarDTO {
   coins: number;
   accentColor: string | null;
   bio: string | null;
+  modelConfig: ModelConfig | null;
   state: FamiliarState;
 }
 
@@ -52,6 +53,10 @@ export interface ModelConfig {
   roughness: number;
   accentColor?: string;
   ornamentColor?: string;
+  /** Geometry hints that drive extra meshes per species (e.g. 'horns','crest','aura','runes','sigil','patch','ribbons'). */
+  ornaments?: string[];
+  /** Color used for the stage-3 magical aura / halo / sigil glow. */
+  auraColor?: string;
 }
 
 export interface InteractionLogDTO {

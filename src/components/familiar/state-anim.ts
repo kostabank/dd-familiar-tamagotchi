@@ -111,3 +111,62 @@ export function applyStateToGroup(
   group.rotation.x = THREE.MathUtils.lerp(group.rotation.x, targets.groupRotationX, k);
   group.rotation.z = THREE.MathUtils.lerp(group.rotation.z, targets.groupRotationZ, k);
 }
+
+/**
+ * Breathing helper — returns a subtle Y-scale factor (≈0.97..1.03) that
+ * species bodies can apply each frame for a "living" feel. Sleeping breathes
+ * slower & deeper, happy breathes faster.
+ */
+export function breathingScale(state: FamiliarState, t: number): number {
+  switch (state) {
+    case 'sleeping':
+      return 1 + Math.sin(t * 0.8) * 0.025;
+    case 'happy':
+      return 1 + Math.sin(t * 2.4) * 0.022;
+    case 'tired':
+      return 1 + Math.sin(t * 0.9) * 0.015;
+    case 'sad':
+      return 1 + Math.sin(t * 0.7) * 0.01;
+    default:
+      return 1 + Math.sin(t * 1.5) * 0.018;
+  }
+}
+
+/**
+ * Blink helper — returns 1.0 most of the time, briefly dropping to ~0.1 every
+ * few seconds to simulate eyelid closure. The blink itself lasts ~0.12s.
+ * Sleeping familiars keep their eyes closed (returns 0.1).
+ */
+export function blinkScale(state: FamiliarState, t: number): number {
+  if (state === 'sleeping') return 0.1;
+  // 3.7s cycle: blink at t mod 3.7 in [0, 0.12].
+  const cycle = 3.7;
+  const phase = t % cycle;
+  if (phase < 0.12) {
+    // smooth dip: cosine curve from 1 -> 0.1 -> 1 over 0.12s
+    const p = phase / 0.12;
+    return 0.1 + 0.9 * (0.5 - 0.5 * Math.cos(p * Math.PI * 2));
+  }
+  return 1;
+}
+
+/**
+ * State-specific secondary vertical bob for the whole creature.
+ * Happy = bouncy, sad = droop, sleeping = gentle rise/fall.
+ */
+export function idleBob(state: FamiliarState, t: number): number {
+  switch (state) {
+    case 'happy':
+      return Math.abs(Math.sin(t * 3.2)) * 0.08;
+    case 'sleeping':
+      return Math.sin(t * 0.7) * 0.04;
+    case 'sad':
+      return -0.05;
+    case 'tired':
+      return Math.sin(t * 0.6) * 0.02;
+    case 'hungry':
+      return Math.sin(t * 1.4) * 0.015;
+    default:
+      return Math.sin(t * 1.1) * 0.03;
+  }
+}

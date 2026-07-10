@@ -1,53 +1,16 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { Species, FamiliarState, ModelConfig } from '@/lib/types';
+import { SPECIES_MODEL_DEFAULTS } from '@/lib/species-defaults';
 import ConstructFamiliar from './ConstructFamiliar';
 import DragonFamiliar from './DragonFamiliar';
 import MagpieFamiliar from './MagpieFamiliar';
 import DollFamiliar from './DollFamiliar';
+import GLBFamiliar from './GLBFamiliar';
 import ZParticles from '../ZParticles';
 
-const DEFAULTS: Record<Species, ModelConfig> = {
-  construct: {
-    primaryColor: '#4a5568',
-    emissiveColor: '#3b82f6',
-    emissiveIntensity: 1.5,
-    scale: 1,
-    metalness: 0.9,
-    roughness: 0.3,
-  },
-  dragon: {
-    primaryColor: '#0d9488',
-    emissiveColor: '#2dd4bf',
-    emissiveIntensity: 0.7,
-    scale: 1,
-    metalness: 0.4,
-    roughness: 0.45,
-    accentColor: '#5eead4',
-    ornamentColor: '#134e4a',
-  },
-  magpie: {
-    primaryColor: '#0a0a0a',
-    emissiveColor: '#e2e8f0',
-    emissiveIntensity: 0.2,
-    scale: 1,
-    metalness: 0.5,
-    roughness: 0.35,
-    accentColor: '#f8fafc',
-    ornamentColor: '#f97316',
-  },
-  doll: {
-    primaryColor: '#6b5b4a',
-    emissiveColor: '#a855f7',
-    emissiveIntensity: 0.4,
-    scale: 1,
-    metalness: 0.1,
-    roughness: 0.85,
-    accentColor: '#1c1917',
-    ornamentColor: '#000000',
-  },
-};
+export { SPECIES_MODEL_DEFAULTS };
 
 interface Props {
   species: Species;
@@ -57,31 +20,69 @@ interface Props {
 }
 
 /**
- * Dispatcher: merges default ModelConfig for the species with any override,
- * applies the stage-based extra scale (1 + (stage-1)*0.15), renders the
- * species-specific model, and overlays ZParticles while sleeping.
+ * Dispatcher: renders the familiar as either:
+ *  1. A real 3D .glb model (if /public/models/{species}.glb exists), OR
+ *  2. A procedural 3D model (default fallback).
+ *
+ * FREE workflow — no paid assets required:
+ *  - Download CC0 low-poly models from quaternius.com / poly.pizza / KayKit.
+ *  - Rename to {species}.glb and drop into /public/models/.
+ *  - The loader auto-detects them via a HEAD request on mount.
+ *  - Evolution-path colors are applied as material tints (no need for 24 models).
+ *  - Optional stage-specific models: {species}-2.glb, {species}-3.glb.
+ *
+ * Until GLB files are added, the polished procedural models (with bloom)
+ * are used — they look good and cost nothing.
  */
 export default function FamiliarModel({ species, stage, state, modelConfigOverride }: Props) {
   const config = useMemo<ModelConfig>(() => {
-    const base = DEFAULTS[species];
+    const base = SPECIES_MODEL_DEFAULTS[species];
     return { ...base, ...(modelConfigOverride ?? {}) };
   }, [species, modelConfigOverride]);
 
-  // Stage bumps overall scale by 15% per stage above 1.
-  const stageScale = 1 + (stage - 1) * 0.15;
+  const [useGLB, setUseGLB] = useState(false);
+
+  // Check once whether a GLB model file exists for this species.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/models/${species}.glb`, { method: 'HEAD' })
+      .then((r) => {
+        if (!cancelled) setUseGLB(r.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setUseGLB(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [species]);
 
   const showZ = state === 'sleeping';
 
+  // GLB model exists → use it.
+  if (useGLB) {
+    return (
+      <GLBFamiliar
+        species={species}
+        stage={stage}
+        state={state}
+        modelConfigOverride={modelConfigOverride}
+      />
+    );
+  }
+
+  // Procedural 3D fallback (default — renders immediately).
+  const stageScale = 1 + (stage - 1) * 0.15;
   const renderSpecies = () => {
     switch (species) {
       case 'construct':
-        return <ConstructFamiliar config={config} state={state} />;
+        return <ConstructFamiliar config={config} stage={stage} state={state} />;
       case 'dragon':
-        return <DragonFamiliar config={config} state={state} />;
+        return <DragonFamiliar config={config} stage={stage} state={state} />;
       case 'magpie':
-        return <MagpieFamiliar config={config} state={state} />;
+        return <MagpieFamiliar config={config} stage={stage} state={state} />;
       case 'doll':
-        return <DollFamiliar config={config} state={state} />;
+        return <DollFamiliar config={config} stage={stage} state={state} />;
       default:
         return null;
     }

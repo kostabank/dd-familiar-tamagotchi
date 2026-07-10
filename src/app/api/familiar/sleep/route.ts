@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { recomputeAndPersist, toFamiliarDTO, computePartyResonance } from '@/lib/familiar-logic';
+import {
+  recomputeAndPersist,
+  toFamiliarDTO,
+  computePartyResonance,
+  checkAndUnlockAchievements,
+  grantAchievementRewards,
+  progressQuest,
+} from '@/lib/familiar-logic';
 import { broadcastFamiliarUpdate, broadcastPartyResonance } from '@/lib/socket-client';
 
 // POST /api/familiar/sleep — put the familiar to sleep (real-time 4h).
@@ -29,10 +36,21 @@ export async function POST() {
       data: { familiarId: familiar.id, userId: me.id, actionType: 'sleep', detail: `sleep_started_at=${now.toISOString()}` },
     });
 
-    const dto = toFamiliarDTO(updated);
+    const newlyUnlocked = await checkAndUnlockAchievements(me.id);
+    const rewardCoins = await grantAchievementRewards(me.id, newlyUnlocked);
+    const questResult = await progressQuest(me.id, 'sleep');
+    const finalFam = (rewardCoins > 0 || questResult.rewardGranted) ? await db.familiar.findUnique({ where: { userId: me.id } }) : updated;
+    const dto = toFamiliarDTO(finalFam!);
     await broadcastFamiliarUpdate(dto);
     await broadcastPartyResonance(await computePartyResonance());
-    return NextResponse.json({ familiar: dto });
+    return NextResponse.json({
+      familiar: dto,
+      newAchievements: newlyUnlocked,
+      achievementCoins: rewardCoins,
+      quest: questResult.quest,
+      questCompleted: questResult.justCompleted,
+      questReward: questResult.rewardGranted,
+    });
   } catch (e) {
     console.error('[familiar/sleep]', e);
     return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 });

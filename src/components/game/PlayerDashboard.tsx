@@ -27,17 +27,27 @@ import { FamiliarProfileModal } from './FamiliarProfileModal';
 import { NotificationFeed } from './NotificationFeed';
 import { MusicTrackSelector } from './MusicTrackSelector';
 import { VolumeControl } from './VolumeControl';
+import { FloatingStatNumbers } from './FloatingStatNumbers';
+import { EvolutionCodex } from './EvolutionCodex';
+import { ShortcutsHelp } from './ShortcutsHelp';
+import { OnboardingTour } from './OnboardingTour';
+import { StreakBadge } from './StreakBadge';
+import { StreakWarningBanner } from './StreakWarningBanner';
 import { useStore } from '@/lib/store';
 import { useFamiliar } from '@/hooks/use-familiar';
 import { useAuth } from '@/hooks/use-auth';
 import { useRealtime } from '@/hooks/use-realtime';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { SPECIES_INFO, STATE_INFO } from '@/lib/constants';
-import { Battery, Smile, BatteryLow, HeartPulse, Wifi, Coins, LogOut, Sparkles } from 'lucide-react';
+import { Battery, Smile, BatteryLow, HeartPulse, Wifi, Coins, LogOut, Sparkles, BookOpen, Keyboard } from 'lucide-react';
 
 export function PlayerDashboard() {
   const { user, familiar, partyResonance, evolving, petEffect, celebration, clearCelebration } = useStore();
+  const setShowCodex = useStore((s) => s.setShowCodex);
+  const setShowShortcutsHelp = useStore((s) => s.setShowShortcutsHelp);
   const { doLogout: logout } = useAuth();
   useRealtime();
+  useKeyboardShortcuts();
   const fam = useStore((s) => s.familiar) ?? familiar;
   const [showProfile, setShowProfile] = useState(false);
 
@@ -82,7 +92,8 @@ export function PlayerDashboard() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
+            <StreakBadge />
             <LiveClock />
             <MusicTrackSelector />
             <VolumeControl />
@@ -98,6 +109,7 @@ export function PlayerDashboard() {
 
       {/* Main: desktop = 3D canvas (3/5) + right panels (2/5); plus far-left party sidebar on xl */}
       <main className="flex-1 mx-auto max-w-7xl w-full p-3 md:p-4">
+        <StreakWarningBanner />
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 md:gap-4">
           {/* Party roster — hidden on small/medium, visible as left column on xl */}
           <aside className="hidden xl:block xl:col-span-1 order-3 xl:order-1">
@@ -123,10 +135,15 @@ export function PlayerDashboard() {
                 evolving={evolving}
                 onEvolutionComplete={() => useStore.getState().setEvolving(false)}
                 petTrigger={petEffect}
-                modelConfigOverride={fam.accentColor ? {
-                  emissiveColor: fam.accentColor,
-                  accentColor: fam.accentColor,
-                } : undefined}
+                modelConfigOverride={{
+                  // Full persisted evolution modelConfig (colors + ornaments + aura).
+                  ...(fam.modelConfig ?? {}),
+                  // Player-chosen accent color (unlocked at Stage 2) overrides the
+                  // emissive + accent tint so customization still works on top of evolution.
+                  ...(fam.accentColor
+                    ? { emissiveColor: fam.accentColor, accentColor: fam.accentColor }
+                    : {}),
+                }}
                 thoughts={{
                   energy: fam.energy,
                   mood: fam.mood,
@@ -135,6 +152,9 @@ export function PlayerDashboard() {
                   sync: fam.sync,
                 }}
               />
+              {/* Floating stat-change indicators (+20 Энергия etc.) */}
+              <FloatingStatNumbers />
+
               {/* Overlay info */}
               <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
                 <Badge className="bg-arcane/30 border-arcane/40 backdrop-blur w-fit">
@@ -147,9 +167,25 @@ export function PlayerDashboard() {
                   {stateInfo.label}
                 </Badge>
               </div>
-              <div className="absolute top-3 right-3 pointer-events-none">
+              <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5 pointer-events-none">
                 <div className="rounded-lg bg-black/30 backdrop-blur px-2 py-1 text-[10px] text-muted-foreground border border-white/5">
                   перетаскивай для вращения
+                </div>
+                <div className="flex items-center gap-1 pointer-events-auto">
+                  <button
+                    onClick={() => setShowCodex(true)}
+                    className="rounded-lg bg-black/40 backdrop-blur px-2 py-1 text-[10px] text-arcane border border-arcane/30 hover:bg-arcane/20 hover:border-arcane/60 transition-colors flex items-center gap-1"
+                    title="Кодекс эволюций (C)"
+                  >
+                    <BookOpen className="h-3 w-3" /> Кодекс
+                  </button>
+                  <button
+                    onClick={() => setShowShortcutsHelp(true)}
+                    className="rounded-lg bg-black/40 backdrop-blur px-2 py-1 text-[10px] text-muted-foreground border border-white/10 hover:bg-white/10 hover:text-foreground transition-colors flex items-center gap-1"
+                    title="Горячие клавиши (?)"
+                  >
+                    <Keyboard className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
               <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 pointer-events-none">
@@ -240,14 +276,29 @@ export function PlayerDashboard() {
       <footer className="mt-auto border-t border-arcane/15 bg-card/30 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-3 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
           <span>D&D Familiar Tamagotchi · Время по Москве · Decay каждый час</span>
-          {partyResonance?.buff && (
-            <span className="text-arcane">{partyResonance.buff}</span>
-          )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                try { window.localStorage.removeItem('ddt_onboarding_done_v1'); } catch { /* noop */ }
+                window.location.reload();
+              }}
+              className="text-muted-foreground/70 hover:text-arcane transition-colors"
+              title="Показать обучение снова"
+            >
+              Обучение
+            </button>
+            {partyResonance?.buff && (
+              <span className="text-arcane">{partyResonance.buff}</span>
+            )}
+          </div>
         </div>
       </footer>
 
       <MiniGame />
       <EvolutionModal />
+      <EvolutionCodex />
+      <ShortcutsHelp />
+      <OnboardingTour />
       <FamiliarProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
       <CelebrationOverlay celebration={celebration} />
     </div>

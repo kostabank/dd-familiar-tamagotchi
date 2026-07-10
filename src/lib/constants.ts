@@ -40,6 +40,41 @@ export const GAME = {
   GIFT_COOLDOWN_MS: 60 * 1000, // 1 min cooldown per recipient
 } as const;
 
+/** Streak milestone tiers — bonus coins granted when claiming the daily buff
+ *  at or above the given consecutive-day streak. The highest reached tier
+ *  applies (not cumulative). Shown in the DailyBuffPanel as a progress track. */
+export interface StreakTier {
+  days: number;
+  bonus: number;
+  label: string;
+  emoji: string;
+  color: string;
+}
+
+export const STREAK_TIERS: StreakTier[] = [
+  { days: 3, bonus: 10, label: 'Стабильный', emoji: '🔥', color: '#f97316' },
+  { days: 7, bonus: 25, label: 'Неделя силы', emoji: '⚡', color: '#eab308' },
+  { days: 14, bonus: 50, label: 'Две луны', emoji: '🌙', color: '#A855F7' },
+  { days: 30, bonus: 100, label: 'Легенда', emoji: '👑', color: '#fbbf24' },
+];
+
+/** Returns the highest streak tier the player has reached, or null. */
+export function reachedStreakTier(streak: number): StreakTier | null {
+  let hit: StreakTier | null = null;
+  for (const t of STREAK_TIERS) {
+    if (streak >= t.days) hit = t;
+  }
+  return hit;
+}
+
+/** Returns the next streak tier to aim for, or null if all reached. */
+export function nextStreakTier(streak: number): StreakTier | null {
+  for (const t of STREAK_TIERS) {
+    if (streak < t.days) return t;
+  }
+  return null;
+}
+
 export interface GiftType {
   code: string;
   label: string;
@@ -68,11 +103,18 @@ export interface QuestTemplate {
 
 export const QUEST_TEMPLATES: QuestTemplate[] = [
   { title: 'Утренний завтрак', description: 'Фамильяр проголодался после ночного дозора. Покорми его дважды!', metric: 'feed', goal: 2, syncReward: 15, coinReward: 10, emoji: '🍳' },
-  { title: 'Щедрый повар', description: 'Устрой пир для своего фамильяра — покорми его 5 раз!', metric: 'feed', goal: 5, syncReward: 25, coinReward: 20, emoji: ' Feast' },
+  { title: 'Щедрый повар', description: 'Устрой пир для своего фамильяра — покорми его 5 раз!', metric: 'feed', goal: 5, syncReward: 25, coinReward: 20, emoji: '🍲' },
   { title: 'Игривый час', description: 'Поиграй с фамильяром 3 раза — ему нужно размяться!', metric: 'play', goal: 3, syncReward: 20, coinReward: 15, emoji: '🎮' },
   { title: 'Ласковый хозяин', description: 'Погладь фамильяра 5 раз — он скучает по вниманию.', metric: 'pet', goal: 5, syncReward: 15, coinReward: 10, emoji: '💗' },
   { title: 'Испытание магией', description: 'Получи бафф дня, чтобы усилить фамильяра.', metric: 'claim_buff', goal: 1, syncReward: 10, coinReward: 5, emoji: '✨' },
   { title: 'Большое приключение', description: 'Поиграй с фамильяром 5 раз для укрепления связи!', metric: 'play', goal: 5, syncReward: 30, coinReward: 25, emoji: '⚔️' },
+  // New templates (CRON-2)
+  { title: 'Сонное царство', description: 'Фамильяр вымотан после боя с гоблинами. Уложи его спать, чтобы восстановить силы.', metric: 'sleep', goal: 1, syncReward: 12, coinReward: 8, emoji: '😴' },
+  { title: 'Глубокий отдых', description: 'После тяжёлого подземелья фамильяру нужен долгий отдых. Усыпляй его дважды!', metric: 'sleep', goal: 2, syncReward: 22, coinReward: 18, emoji: '🌙' },
+  { title: 'Пиршество героя', description: 'Накрой королевский стол — покорми фамильяра 10 раз за день!', metric: 'feed', goal: 10, syncReward: 45, coinReward: 40, emoji: '👑' },
+  { title: 'Крепкая связь', description: 'Погладь фамильяра 15 раз — между вами должна возникнуть нерушимая связь.', metric: 'pet', goal: 15, syncReward: 35, coinReward: 30, emoji: '🤝' },
+  { title: 'Ночная охота', description: 'Поиграй с фамильяром 8 раз — он тренирует инстинкты хищника.', metric: 'play', goal: 8, syncReward: 40, coinReward: 35, emoji: '🌙' },
+  { title: 'Тройной ритуал', description: 'Получи бафф дня три раза подряд. Терпение и ритуал — путь к силе!', metric: 'claim_buff', goal: 3, syncReward: 50, coinReward: 45, emoji: '🔮' },
 ];
 
 export function clamp(v: number, min = GAME.MIN_STAT, max = GAME.MAX_STAT): number {

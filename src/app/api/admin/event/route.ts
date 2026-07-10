@@ -3,7 +3,10 @@ import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { toFamiliarDTO, computePartyResonance } from '@/lib/familiar-logic';
 import { clamp } from '@/lib/constants';
-import { broadcastFamiliarUpdate, broadcastPartyResonance, broadcastAdminEvent } from '@/lib/supabase';
+// Use the socket-client wrapper which fixes the (familiar) → (familiarId, familiar)
+// signature mismatch vs the raw supabase broadcast helper.
+import { broadcastFamiliarUpdate, broadcastPartyResonance } from '@/lib/socket-client';
+import { broadcastAdminEvent } from '@/lib/supabase';
 
 // POST /api/admin/event — DM triggers a global event ('storm' | 'festival').
 // Applies DB changes directly + broadcasts via Supabase Realtime.
@@ -35,13 +38,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Broadcast all updated familiars + resonance + event notification.
+    // Broadcasts are best-effort (no-op without Supabase env vars).
     const refreshed = await db.familiar.findMany();
     for (const f of refreshed) {
-      await broadcastFamiliarUpdate(toFamiliarDTO(f));
+      try {
+        await broadcastFamiliarUpdate(toFamiliarDTO(f));
+      } catch {
+        /* broadcast failure should not fail the event */
+      }
     }
-    const resonance = await computePartyResonance();
-    await broadcastPartyResonance(resonance);
-    await broadcastAdminEvent(event, affected);
+    try {
+      const resonance = await computePartyResonance();
+      await broadcastPartyResonance(resonance);
+      await broadcastAdminEvent(event, affected);
+    } catch {
+      /* resonance/broadcast failure is non-critical */
+    }
 
     return NextResponse.json({ event, affected });
   } catch (e) {

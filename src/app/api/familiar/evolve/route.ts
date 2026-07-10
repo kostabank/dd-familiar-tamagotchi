@@ -45,6 +45,9 @@ export async function POST(req: NextRequest) {
         // small heal on evolution
         health: clamp(familiar.health + 20),
         mood: clamp(familiar.mood + 20),
+        // Persist the chosen evolution's full modelConfig (colors + ornaments + aura)
+        // so the 3D model keeps its new look after page reload.
+        modelConfig: option.modelConfig,
       },
     });
     await db.interactionLog.create({

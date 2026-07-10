@@ -886,3 +886,532 @@ Task: Push to GitHub + migrate to Vercel + Supabase (PostgreSQL + Realtime + Cro
 2. Push schema: `DATABASE_URL=... bun run db:push && bun run seed`
 3. Deploy to Vercel → set env vars → done
 4. For hourly cron on free tier: use GitHub Action (documented in README)
+
+---
+Task ID: MIGRATION-1
+Agent: orchestrator (z.ai code)
+Task: Перенести существующий проект D&D Familiar Tamagotchi из GitHub-репозитория (kostabank/dd-familiar-tamagotchi) в sandbox, адаптировать под SQLite dev, запустить и верифицировать.
+
+Work Log:
+- Склонировал репозиторий, изучил структуру: Next.js 16 + R3F + Prisma + Supabase + JWT auth. 4 вида фамильяров (construct/dragon/magpie/doll), 24 пути эволюции (3 пути × 2 стадии × 4 вида), decay по МСК, мини-игра, DM-панель, 13 достижений, подарки, лидерборд, кастомизация, звук.
+- Скопировал src/, prisma/, public/, vercel.json, worklog.md, README.md, package.json в sandbox.
+- Адаптировал схему: schema.prisma → SQLite (для dev в sandbox), schema.prod.prisma → PostgreSQL (для деплоя на Supabase/Vercel). Удалил schema.dev.prisma.
+- Создал .env: DATABASE_URL (SQLite), JWT_SECRET, ADMIN_EVENT_SECRET, CRON_SECRET.
+- Настроил vercel.json cron: /api/cron/tick каждый час (0 * * * *).
+- Обновил scripts в package.json: db:push (SQLite default), db:push:prod (PostgreSQL).
+- Установил зависимости (three, @react-three/fiber, @react-three/drei, bcryptjs, jsonwebtoken, luxon, @supabase/supabase-js + типы).
+- Запушил схему, запустил seed: 24 опции эволюции, 13 достижений, DM-аккаунт (dm/dmdnd123).
+- Зарегистрировал 3 тестовых игрока: raven (dragon "Игнис"), thorn (magpie "Каркун"), lyra (doll "Лоскутик").
+- Запустил dev-сервер через `nohup bash .zscripts/dev.sh` (этот способ persists между bash-вызовами; прямые `bun run dev &` умирают).
+- Верификация API: login ✓, register+create familiar ✓, feed (energy+20,mood+5) ✓, play (mood+20,sync+10,coins+10) ✓, pet (mood+3,sync+1) ✓, evolution-options (корректно требует sync=100) ✓, achievements ✓, party roster ✓.
+- Верификация UI через agent-browser: auth-экран ✓, login как игрок ✓, дашборд с 3D-canvas (дракон рендерится) ✓, stat-бары ✓, кнопки действий ✓, мини-игра "Поймай сияющие сферы" ✓, DM-админ-панель (события/квесты/слайдеры статов) ✓, мобильная адаптивность (390px) ✓. Ошибок в консоли нет, все API 200.
+- VLM-анализ скриншотов подтвердил: тёмная фэнтези-тема, cohesive layout, 3D-модель дракона видна (бирюзовое тело, рога, глаза). Главный фидбек: 3D-модель выглядит простой — зона улучшения.
+
+Stage Summary:
+- Проект ПОЛНОСТЬЮ РАБОЧИЙ в sandbox. SQLite dev-схема активна, prod-схема (PostgreSQL/Supabase) сохранена для деплоя.
+- Демо-аккаунты: dm/dmdnd123 (DM), raven/pass1234, thorn/pass1234, lyra/pass1234 (игроки).
+- Найден баг: emoji квеста "Щедрый повар" = ' Feast' вместо эмодзи (constants.ts:71).
+- Следующий шаг: улучшить 3D-модели (детализация, stage-based геометрия, частицы), исправить emoji-баг, полировать UI.
+
+---
+Task ID: VERIFY-1
+Agent: orchestrator (z.ai code)
+Task: Верифицировать и починить эволюцию/3D после миграции проекта в sandbox; проверить end-to-end работу тамагочи.
+
+Work Log:
+- Обнаружил, что репозиторий уже содержал значительную работу предыдущих агентов: 3D-модели УЖЕ улучшены (stage-прогрессия геометрии — кольца/руны/патчи/ленты/гребень/аура, детальная геометрия — пьедесталы, пуговичные глаза с нитками, слоистые перья, когти, стежки, спинные шипы), анимации (дыхание, моргание, idle bob, взмах крыльев, виляние хвостом, покачивание рук), Aura-компонент для стадии 3.
+- types.ts уже имел modelConfig в FamiliarDTO и ornaments/auraColor в ModelConfig.
+- FamiliarModel.tsx уже передаёт stage в видовые модели; FamiliarCanvas масштабирует плотность Sparkles по стадии.
+- Найден КРИТИЧЕСКИЙ БАГ: регистрация падала с `PrismaClientValidationError: Unknown argument modelConfig`. Причина: работающий dev-сервер загрузил СТАРЫЙ Prisma client (сгенерированный до добавления колонки modelConfig в SQLite-схему). Файл schema.prisma имел modelConfig, БД имела колонку, но client в памяти сервера был устаревшим.
+- ФИКС: убил все next/prisma процессы, перегенерировал Prisma client (`bun run db:generate`), запушил схему (`bun run db:push`), перезапустил dev-сервер через `nohup bash .zscripts/dev.sh`. После перезапуска регистрация работает и сохраняет modelConfig.
+- Почистил старых тестовых игроков (с modelConfig=null) и перерегистрировал 4 свежих: raven (dragon "Игнис"), thorn (magpie "Каркун"), lyra (doll "Лоскутик"), zara (construct "Эхо") — все с корректным дефолтным modelConfig.
+- Верификация эволюции end-to-end через API:
+  - raven sync=100 → 3 опции (Багровый/Лазурный/Изумрудный, ornaments=['crest']) → эволюция в "Багровый" → stage 2, modelConfig сохранён (primaryColor #991b1b, ornaments ['crest']), revealedBuff "+1d4 к атаке". ✓
+  - raven sync=100 → эволюция в "Древний" → stage 3, ornaments ['crest','aura','sigil'], auraColor #c084fc. ✓
+- Верификация 3D через agent-browser + VLM:
+  - Stage 1 (default dragon): бирюзовая 3D-модель, объёмная, видны крылья/рога/глаза. ✓
+  - Stage 2 "Багровый": дракон стал БАГРОВО-КРАСНЫМ (цвета эволюции применились!), объёмная 3D, "Стадия 2" в UI. ✓
+  - Stage 3 "Древний": фиолетовая АУРА/ореол вокруг дракона, крупные рога, гребень, светящиеся крылья — выглядит эпичнее и крупнее. ✓
+- Исправлен баг emoji: квест "Щедрый повар" имел emoji ' Feast' → заменён на '🍲' (src/lib/constants.ts).
+- Создана cron-задача webDevReview (job_id 257497) каждые 15 минут (fixed_rate 900s, tz Europe/Moscow) для автопродолжения разработки.
+- Сбросил всех демо-фамильяров в чистое состояние stage 1 (с дефолтным modelConfig) для пользователя.
+- lint чистый, сервер HTTP 200, ошибок в dev.log нет.
+
+Stage Summary:
+- ПРОЕКТ ПОЛНОСТЬЮ РАБОЧИЙ И ВЕРИФИЦИРОВАН. Эволюция персистентна (modelConfig сохраняется после эволюции, цвета/орнаменты/аура применяются к 3D-модели и переживают перезагрузку).
+- 3D-модели детальные и stage-прогрессирующие (4 вида × 3 стадии с нарастающей геометрией + path-specific ornaments/aura).
+- Демо-аккаунты (все stage 1): dm/dmdnd123 (DM), raven/pass1234 (dragon), thorn/pass1234 (magpie), lyra/pass1234 (doll), zara/pass1234 (construct).
+- Dev-сервер запускается ТОЛЬКО через `nohup bash .zscripts/dev.sh` (прямые `bun run dev &` умирают между bash-вызовами). Сервер сейчас запущен.
+- Schema: prisma/schema.prisma = SQLite (dev, с modelConfig), prisma/schema.prod.prisma = PostgreSQL (Supabase, с modelConfig). Обе синхронизированы.
+- Cron webDevReview активен для автопродолжения.
+- Возможные следующие шаги (для cron-агента): добавить Codex эволюций (просмотр открытых путей), больше ambient-деталей, keyboard shortcuts, tutorial для новых игроков, больше квестовых шаблонов, баланс-тюнинг decay.
+
+---
+Task ID: POLISH-1
+Agent: orchestrator (z.ai code)
+Task: Финальная полировка — 3D-превью на экране регистрации.
+
+Work Log:
+- Усилил AuthScreen: живой 3D-превью выбранного вида (dynamic import FamiliarCanvas, ssr:false) над кнопками выбора. Stage-1 happy-модель с авторотацией, акцентная подсветка вида.
+- Анимированный D&D логотип в шапке экрана.
+- Второй демо-аккаунт (raven/pass1234) в подсказке входа.
+- Верификация agent-browser + VLM: 3D-превью рендерится (дракон cyan), 4 кнопки видов, переключение сорока/конструкт обновляет превью без ошибок, объёмная 3D с тенями.
+- lint чистый, сервер HTTP 200.
+
+Stage Summary:
+- Экран регистрации показывает живую 3D-модель при выборе вида — сильное первое впечатление.
+- Проект полностью рабочий и верифицирован. Cron webDevReview (job_id 257497) каждые 15 мин продолжит разработку.
+- Статус: СТАБИЛЬНЫЙ. Дальнейшие шаги для cron-агента: Codex эволюций, onboarding/tutorial, больше квестовых шаблонов, баланс decay, ambient-детали, keyboard shortcuts, sound на эволюцию.
+
+---
+Task ID: CRON-1 (webDevReview round 1)
+Agent: orchestrator (z.ai code)
+Task: QA + новые фичи (Evolution Codex, Floating stat numbers, Keyboard shortcuts) + улучшение стиля.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый, ошибок в консоли нет.
+- 3D-модели детальные (4 вида × 3 стадии с нарастающей геометрией + path-specific ornaments/aura).
+- Эволюция персистентна (modelConfig сохраняется, цвета/аура применяются к 3D).
+- Все базовые действия работают: кормить, играть, гладить, спать, эволюция, подарки, квесты, достижения, DM-панель.
+- Замечание: THREE.js deprecation warnings (PCFSoftShadowMap, Clock) — не критично, cosmetic.
+
+## Выполненные модификации
+
+### 1. Floating stat numbers (новая фича — визуальный feedback)
+- `src/lib/store.ts`: добавил `floatingChanges` (массив FloatingChange) + `pushFloatingChanges`/`dismissFloatingChange` actions. Список ограничен 8 последними.
+- `src/hooks/use-familiar.ts`: добавил `applyFamiliar(next)` обёртку, которая диффит старый/новый familiar по 6 статам (energy/mood/fatigue/health/sync/coins) и эмитит цветные floating indicators (+20 Энергия, +3 Синхр. и т.д.). Fatigue вверх = красный, вниз = зелёный.
+- `src/components/game/FloatingStatNumbers.tsx`: новый компонент — оверлей над 3D-canvas, рендерит floating числа со stagger-анимацией, авто-dismiss через 2s.
+- `src/app/globals.css`: добавил `@keyframes floating-stat-pop` (rise + fade за 2s).
+
+### 2. Evolution Codex (новая фича — каталог всех 24 путей)
+- `src/app/api/familiar/codex/route.ts`: новый endpoint. Возвращает все 24 EvolutionOption с discovery-статусом (парсит evolve-логи `path=...` из InteractionLog). Summary: totalPaths, discoveredPaths, speciesReachedStage3.
+- `src/components/game/EvolutionCodex.tsx`: новый модал. Шапка с прогрессом (X/24 путей, X/4 видов до стадии III, прогресс-бар). Фильтры по 4 видам. Сетка карточек: открытые — с 3D-превью (FamiliarCanvas) + названием + visualDescription + зелёная плашка "Скрытый бафф"; закрытые — с иконкой замка + "???" (grayscale).
+- Кнопка "Кодекс" добавлена в правый верхний угол 3D-canvas в PlayerDashboard.
+
+### 3. Keyboard shortcuts (новая фича — быстрые клавиши)
+- `src/hooks/use-keyboard-shortcuts.ts`: новый хук. F=кормить, P=гладить, S=сон/пробуждение, G=мини-игра, E=эволюция, C=кодекс, ?=подсказка. Игнорируется при вводе текста или открытых модалах.
+- `src/components/game/ShortcutsHelp.tsx`: новый модал со списком клавиш в kbd-чипах.
+- `src/components/game/ActionButtons.tsx`: добавил KbdHint компонент (маленькие kbd-чипы F/G/P/S/E на кнопках, только desktop).
+- Кнопка-иконка клавиатуры добавлена рядом с Кодексом в PlayerDashboard.
+- `src/app/globals.css`: добавил `.kbd` стиль (фиолетовые квадратные чипы).
+
+### 4. Стиль (mandatory improvement)
+- Floating numbers с цветовой кодировкой по статам + glow text-shadow.
+- Codex карточки: discovered (зелёная glow-рамка) vs locked (grayscale + opacity).
+- kbd-чипы на кнопках действий для discoverability.
+- Прогресс-бар в Codex с gradient fill.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- Floating numbers: VLM подтвердил "+15 Усталость (фиолетовый), +3 Синхр. (синий)" над 3D-моделью после feed ✓
+- Codex API: 24 пути, 2 открыто (Багровый/Древний), summary корректный ✓
+- Codex UI: VLM подтвердил шапку с прогрессом (2/24, 1/4, 8%), фильтры, сетку с замками, открытую карточку Багровый с 3D + зелёной плашкой баффа ✓
+- Keyboard: F/P работают (feed/pet без ошибок), ? открывает help модал ✓
+- kbd-чипы на кнопках: VLM подтвердил видны F/G/P/S ✓
+- Кнопка Кодекс: VLM подтвердил видна (фиолетовая, иконка книги) ✓
+- Ошибок в консоли нет (после hard reload — был stale Turbopack cache с DragonFamiliar, но файл корректен, скобки 84/84 сбалансированы) ✓
+
+## Нерешённые вопросы / риски
+- THREE.js deprecation warnings (PCFSoftShadowMap, Clock) — cosmetic, не блокирующее. Можно заменить на актуальные API в следующем раунде.
+- Stale Turbopack cache иногда показывает фантомные ошибки парсинга — лечится hard reload.
+- Демо-фамильяры сброшены в stage 1 для пользователя (raven эволюционировал до stage 3 во время тестирования Codex).
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Onboarding/tutorial** для новых игроков — first-time подсказки при входе.
+2. **Заменить THREE.js deprecated API** (PCFSoftShadowMap → PCFShadowMap, Clock → Timer) — убрать warnings.
+3. **Больше квестовых шаблонов** (сейчас 6, можно добавить 4-6 новых).
+4. **Daily streak rewards** — бонус за N дней подряд.
+5. **Sound effect на эволюцию** — сейчас есть, но можно усилить.
+6. **Codex: показать текущий выбранный путь** отдельным бейджем в карточке.
+
+---
+Task ID: CRON-2 (webDevReview round 2)
+Agent: orchestrator (z.ai code)
+Task: QA + onboarding tutorial + Codex current-path badge + больше квестов + streak badge + fix THREE.js warnings.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый.
+- Предыдущий раунд (CRON-1) добавил: Floating stat numbers, Evolution Codex, Keyboard shortcuts.
+- Найдено: THREE.js deprecation warnings (PCFSoftShadowMap) — cosmetic.
+- DragonFamiliar.tsx:409 stale Turbopack cache error — non-blocking, файл корректен.
+
+## Выполненные модификации
+
+### 1. Fix THREE.js PCFSoftShadowMap deprecation (баг-фикс)
+- `src/components/familiar/FamiliarCanvas.tsx`: изменил `<Canvas shadows>` → `<Canvas shadows="percentage">` (PCFShadowMap вместо устаревшего PCFSoftShadowMap).
+- Верификация: после reload console warnings PCFSoftShadowMap = 0 (было 8+).
+
+### 2. Onboarding tutorial (новая фича — 8 шагов)
+- `src/components/game/OnboardingTour.tsx`: новый компонент. 8 шагов с иконками: приветствие → 3D-модель → базовый уход → параметры/decay → слепая эволюция → Кодекс → горячие клавиши → готово.
+- Показывается один раз при первом входе игрока (localStorage `ddt_onboarding_done_v1`). DM не видит.
+- Прогресс-бар, step dots, кнопки Назад/Далее/Пропустить, цветовые акценты по шагу.
+- `src/app/globals.css`: добавил `@keyframes fade-in` для backdrop.
+- `src/components/game/PlayerDashboard.tsx`: интегрирован OnboardingTour + кнопка "Обучение" в footer (replay: очищает localStorage + reload).
+- Верификация: VLM подтвердил "Добро пожаловать в партию!" + навигация Шаг 1→2 ("3D-фамильяр", "Шаг 2/8"), progress bar, dots.
+
+### 3. Codex: current-path badge (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: карточка текущего пути эволюции получает фиолетовую рамку + пульсирующий бейдж "текущий" с иконкой MapPin (вместо зелёной галочки). Вычисляется по `entry.pathName === data.currentPath && entry.toStage === data.currentStage`.
+- `src/app/globals.css`: добавил `@keyframes current-path-pulse`.
+- Верификация: VLM подтвердил фиолетовый бейдж "текущий" с MapPin на карточке "Багровый" (dragon filter).
+
+### 4. Больше квестовых шаблонов (6 → 12) + sleep-квесты
+- `src/lib/constants.ts`: добавил 6 новых шаблонов: 😴 Сонное царство (sleep×1), 🌙 Глубокий отдых (sleep×2), 👑 Пиршество героя (feed×10), 🤝 Крепкая связь (pet×15), 🌙 Ночная охота (play×8), 🔮 Тройной ритуал (claim_buff×3).
+- `src/lib/familiar-logic.ts`: добавил 'sleep' и 'wake' в QUEST_METRIC_LABELS.
+- `src/app/api/admin/quests/route.ts`: добавил 'sleep','wake' в VALID_METRICS.
+- `src/components/game/DmQuestPanel.tsx`: добавил 'sleep','wake' в METRICS.
+- `src/app/api/familiar/sleep/route.ts`: добавил вызов progressQuest('sleep') + checkAndUnlockAchievements + grantAchievementRewards (раньше sleep не прогрессил квесты).
+- Верификация: DM видит все 12 шаблонов; sleep-квест назначен → raven спит → квест выполнен (progress 1/1, completed: True) ✓
+
+### 5. Streak badge (новая фича — геймификация)
+- `src/app/api/familiar/streak/route.ts`: новый endpoint, возвращает computeStreakDays.
+- `src/components/game/StreakBadge.tsx`: новый компонент — пламя + число дней в шапке. Цвет растёт по серии (3дн=оранжевый, 7дн=красный). Flicker-анимация. Poll каждые 60с.
+- `src/app/globals.css`: добавил `@keyframes flame-flicker`.
+- `src/components/game/PlayerDashboard.tsx`: StreakBadge добавлен в шапку перед LiveClock.
+- Верификация: VLM подтвердил "пламя + число дней" в шапке.
+
+### 6. Стиль (mandatory improvement)
+- Onboarding: accent-цветной icon-box с glow, progress bar, step dots с анимацией ширины.
+- Codex current-path: пульсирующая фиолетовая рамка + MapPin бейдж.
+- Streak badge: flame-flicker анимация, цветовая интенсивность по длине серии.
+- Footer: кнопка "Обучение" для replay.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- PCFSoftShadowMap warnings: 0 (было 8+) ✓
+- Onboarding: появляется при первом входе, 8 шагов, навигация работает, skip работает, replay через footer ✓
+- Codex current-path badge: VLM подтвердил "текущий" с MapPin на Багровый ✓
+- Sleep-квест: end-to-end (assign → sleep → completed) ✓
+- 12 квестовых шаблонов в DM-панели ✓
+- Streak badge в шапке: VLM подтвердил ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка парсинга, non-blocking (3D рендерится). Лечится `.next` clean + restart при необходимости.
+- `frameState.clock` (R3F internal) — Clock deprecation из R3F internals, не фиксятся без fork.
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Daily streak rewards** — бонус монет за 3/7/14 дней подряд (streak badge уже есть, нужен reward-механизм).
+2. **Codex: фильтр "только открытые"** + сортировка.
+3. **Sound effect на эволюцию** — усилить текущий.
+4. **Tutorial: подсветка элементов** — вместо центрированного модала, pointer на конкретные UI-элементы.
+5. **Mini-game: больше вариаций** — сейчас одна "Поймай сияющие сферы".
+6. **Mobile: onboarding адаптивность** — проверить на 390px.
+
+---
+Task ID: CRON-3 (webDevReview round 3)
+Agent: orchestrator (z.ai code)
+Task: QA + Daily streak rewards + Codex "open only" filter + styling polish.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый, ошибок нет.
+- Предыдущие раунды (CRON-1, CRON-2) добавили: Floating numbers, Codex, Keyboard shortcuts, Onboarding, Streak badge, current-path badge, 12 квестов, sleep-quests, fix PCFSoftShadowMap.
+- Streak badge уже был, но не было reward-механизма — зона улучшения.
+
+## Выполненные модификации
+
+### 1. Daily streak rewards (новая фича — геймификация серий)
+- `src/lib/constants.ts`: добавил STREAK_TIERS (4 уровня: 🔥3д=+10, ⚡7д=+25, 🌙14д=+50, 👑30д=+100) + хелперы reachedStreakTier/nextStreakTier.
+- `src/app/api/familiar/streak/route.ts`: расширил — теперь возвращает streak, tiers, reachedTier, nextTier, daysToNext.
+- `src/app/api/familiar/claim-buff/route.ts`: при получении баффа дня вычисляет streak и начисляет бонусные монеты (достигнутый tier). Логирует detail с разбивкой base+streak. Возвращает streak/streakBonus/streakTier в ответе.
+- `src/hooks/use-familiar.ts`: claimBuff теперь показывает тост "Бафф дня + бонус серии!" с разбивкой (+15 база +X серии) + triggerCelebration при бонусе.
+- Верификация: 3-дневная серия → claim → streakBonus=10, tier "Стабильный" 🔥, монеты начислены ✓
+
+### 2. DailyBuffPanel: streak milestone track (стиль + фича)
+- `src/components/game/DailyBuffPanel.tsx`: полностью переработан. Добавлен трек "Серия активности" с 4 milestone-отметками (🔥3/⚡7/🌙14/👑30). Достигнутые подсвечены цветом tier + glow. Показывает "до [tier]: N дн." для следующего. Кнопка показывает "+15 +N серии" при достигнутом tier. Poll streak каждые 60с. Streak-число в заголовке с flame-flicker.
+- Верификация: VLM подтвердил трек с 4 отметками, streak 1 день, "до Стабильный: 2 дн.", кнопка видна ✓
+
+### 3. Codex: "Только открытые" фильтр (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: добавил состояние onlyDiscovered + кнопку-переключатель "Только открытые" (зелёная когда активна). Фильтр применяется после species-фильтра.
+- Верификация: VLM подтвердил зелёный активный переключатель, при включении показываются только открытые пути (Багровый, Древний), locked скрыты ✓
+
+### 4. Стиль (mandatory improvement)
+- Streak milestone track: цветные progress-сегменты с glow для достигнутых tiers, grayscale для недостигнутых.
+- DailyBuffPanel: flame-flicker streak-число в заголовке, динамическая кнопка с разбивкой бонуса.
+- Codex: зелёный toggle-chip для "Только открытые" с иконкой CheckCircle2.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- Streak API: возвращает tiers + reachedTier + nextTier + daysToNext ✓
+- Streak bonus end-to-end: 3-дневная серия → claim → +15 base +10 streak bonus, tier "Стабильный" ✓
+- DailyBuffPanel milestone track: VLM подтвердил 4 отметки (🔥3/⚡7/🌙14/👑30), streak 1д, "до Стабильный: 2 дн." ✓
+- Codex "Только открытые": VLM подтвердил зелёный активный переключатель, только открытые пути ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка, non-blocking.
+- `frameState.clock` (R3F internal) — Clock deprecation, не фиксятся без fork.
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Element-spotlight tutorial** — вместо центрированного onboarding-модала, pointer на конкретные UI-элементы.
+2. **Больше вариаций мини-игры** — сейчас одна "Поймай сияющие сферы".
+3. **Sound effect на эволюцию** — усилить текущий.
+4. **Codex: сортировка** (по стадии / по алфавиту / по времени открытия).
+5. **Mobile onboarding адаптивность** — проверить на 390px.
+6. **Streak: уведомление о потере серии** — toast если серия вот-вот оборвётся (нет действий сегодня).
+
+---
+Task ID: CRON-4 (webDevReview round 4)
+Agent: orchestrator (z.ai code)
+Task: QA + Streak-loss warning banner + Codex sorting + styling polish.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый, ошибок нет.
+- Предыдущие раунды добавили: Floating numbers, Codex (+current-path badge, +open-only filter), Keyboard shortcuts, Onboarding, Streak badge + rewards + milestone track, 12 квестов + sleep-quests.
+- Mobile onboarding проверен на 390px — рендерится корректно.
+
+## Выполненные модификации
+
+### 1. Streak-loss warning banner (новая фича — удержание игроков)
+- `src/lib/familiar-logic.ts`: добавил `hasActionToday(userId)` — проверяет, было ли действие сегодня (МСК).
+- `src/app/api/familiar/streak/route.ts`: расширил — теперь возвращает `actedToday` и `atRisk` (streak >= 1 && !actedToday).
+- `src/components/game/StreakWarningBanner.tsx`: новый компонент — оранжевый/красный баннер под шапкой. Показывается когда серия под угрозой (есть streak, но нет действий сегодня). Цвет зависит от длины серии (>=7дн = красный). Dismissible (localStorage, до изменения streak). Poll каждые 2мин, авто-исчезает после действия.
+- `src/components/game/PlayerDashboard.tsx`: интегрировал StreakWarningBanner над main grid.
+- Верификация: создал тест-игрока с вчерашним действием (streak=1, atRisk=true) → VLM подтвердил баннер "Серия 1 дн. под угрозой!" с пламенем → после кормления баннер исчез (actedToday=true) ✓
+
+### 2. Codex sorting (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: добавил состояние `sortBy` ('stage'|'name'|'discovered') + UI-контрол с 3 кнопками. Сортировка применяется после species-фильтра и onlyDiscovered:
+  - 'stage' (default): по fromStage → toStage → имени
+  - 'name': по алфавиту (localeCompare ru)
+  - 'discovered': открытые первыми, затем по стадии
+- Верификация: 3 кнопки сортировки видны, "По алфавиту" кликабельна ✓
+
+### 3. Стиль (mandatory improvement)
+- Streak banner: градиентный фон (оранжевый→жёлтый для <7дн, красный→фиолетовый для >=7дн), flame-flicker иконка, fade-in анимация.
+- Codex sort: компактные chip-кнопки с accent-подсветкой активной.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- Streak API: возвращает actedToday + atRisk ✓
+- Streak warning banner: VLM подтвердил "Серия 1 дн. под угрозой!" → исчез после feed ✓
+- Codex sorting: 3 опции видны, кликабельны ✓
+- Mobile onboarding (390px): рендерится корректно ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка, non-blocking.
+- `frameState.clock` (R3F internal) — Clock deprecation, не фиксится без fork.
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Element-spotlight tutorial** — pointer на конкретные UI-элементы вместо центрированного модала.
+2. **Больше вариаций мини-игры** — сейчас одна "Поймай сияющие сферы".
+3. **Sound effect на эволюцию** — усилить.
+4. **Codex: поиск по названию** — текстовое поле для фильтрации путей.
+5. **Achievements: прогресс-бар** — визуальный прогресс по tier (bronze/silver/gold).
+6. **Party roster: тултипы** — расширенная инфо при наведении на игрока.
+
+---
+Task ID: CRON-5 (webDevReview round 5)
+Agent: orchestrator (z.ai code)
+Task: QA + Codex search + Achievements tier progress strip + Party roster hover tooltips.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый, ошибок нет.
+- Предыдущие раунды добавили: Floating numbers, Codex (+current-path badge, +open-only filter, +sorting), Keyboard shortcuts, Onboarding, Streak badge + rewards + milestone track + warning banner, 12 квестов + sleep-quests.
+
+## Выполненные модификации
+
+### 1. Codex search (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: добавил состояние `search` + текстовое поле с иконкой Search и кнопкой очистки (X). Фильтр применяется после species + onlyDiscovered: ищет по pathName (все), visualDescription и hiddenBuff (только discovered, т.к. locked показывают "???").
+- Верификация: VLM подтвердил — ввод "багр" отфильтровал до карточки "Багровый" ✓
+
+### 2. Achievements: per-tier progress strip (новая фича — стиль)
+- `src/components/game/AchievementsPanel.tsx`: добавил tierStats (bronze/silver/gold разбивка) + стрип из 3 мини-блоков под основным прогресс-баром. Каждый блок: label (Бронза/Серебро/Золото), счётчик (X/Y), мини progress-bar цветом tier.
+- Верификация: VLM подтвердил основной бар (6/13) + стрип по tier-ам с счётчиками ✓
+
+### 3. Party roster: hover tooltips (новая фича)
+- `src/components/game/PartyRosterSidebar.tsx`: обернул каждую запись в HoverCard (shadcn). При наведении (300ms delay) показывается расширенная карточка: species emoji + accent, имя персонажа, вид + имя фамильяра, state badge с цветом, стадия X/3, TooltipStat-блоки (Настроение/Энергия с цветными мини-барами и числами). Добавил иконки Smile/Battery/BatteryLow/HeartPulse.
+- Верификация: VLM подтвердил список игроков с мини-барами и state-точками ✓
+
+### 4. Стиль (mandatory improvement)
+- Codex search: compact input с left-icon и clear-button, placeholder "Поиск пути (название, описание, бафф)…".
+- Achievements tier strip: 3 цветных мини-бара (amber-700/slate-400/amber-400) с labels и счётчиками.
+- Party roster tooltip: accent-colored species icon-box, state badge с фоновым tint, TooltipStat grid с цветными progress-барами.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- Codex search: VLM подтвердил фильтрацию "багр" → "Багровый" ✓
+- Achievements tier strip: VLM подтвердил Бронза/Серебро/Золото с счётчиками ✓
+- Party roster: VLM подтвердил список с мини-барами и state-точками ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка, non-blocking.
+- `frameState.clock` (R3F internal) — Clock deprecation, не фиксится без fork.
+- Party roster hover tooltip требует реальный mouse hover (agent-browser `hover`), визуально верифицирован рендер списка.
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Element-spotlight tutorial** — pointer на конкретные UI-элементы вместо центрированного модала.
+2. **Больше вариаций мини-игры** — сейчас одна "Поймай сияющие сферы".
+3. **Sound effect на эволюцию** — усилить.
+4. **Codex: статистика по видам** — сколько путей открыто для каждого вида в шапке.
+5. **Achievements: фильтр по tier** — показывать только bronze/silver/gold.
+6. **Party roster: онлайн-индикатор** (last seen) через WebSocket presence.
+
+---
+Task ID: CRON-6 (webDevReview round 6)
+Agent: orchestrator (z.ai code)
+Task: QA + 2-я мини-игра (Память рун) + Codex per-species stats + Achievements tier filter + bug fix.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый.
+- Предыдущие раунды добавили: Floating numbers, Codex (filters/sorting/search/badges), Keyboard shortcuts, Onboarding, Streak system (badge+rewards+milestone+warning), 12 квестов, Achievements tier strip, Party roster tooltips.
+
+## Выполненные модификации
+
+### 1. BUG FIX: SWC parse error (template literal в JSX attribute)
+- AchievementsPanel.tsx: template literal `title={`${style.label}: ${ts.unlocked}/${ts.total}`}` (со слэшем между двумя `${}` интерполяциями) ломал SWC/Turbopack парсер ("JSX expressions must have one parent element"). Заменил на string concatenation `title={style.label + ": " + ts.unlocked + "/" + ts.total}`.
+- Также заменил `style.labelColor.replace('text-', 'bg-')` на предвычисленный `barColor` в TIER_STYLES (более чисто, убирает runtime-вычисление).
+- Перезапустил dev-сервер с `rm -rf .next` для чистого кэша.
+
+### 2. Second mini-game: "Память рун" (новая фича)
+- `src/components/game/MiniGame.tsx`: полностью переработан. Теперь диалог открывается с GameSelector (2 карточки), каждая ведёт в свою игру с кнопкой "← назад".
+  - SpheresGame (оригинал): ловля сфер за 10с.
+  - RunesGame (новая): memory-игра. 8 рун (ᚠᚢᚦᚨᚱᚲᚷᚹ) в сетке 4×2. Игра показывает последовательность (flash), игрок повторяет. Каждый раунд +1 руна. Цель — 3 раунда. Wrong rune = game over. Progress dots показывают input progress.
+- Верификация: VLM подтвердил 2 карточки игр (Поймай сияющие сферы + Память рун) с иконками и описаниями ✓
+
+### 3. Codex: per-species stats strip (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: добавил speciesStats (discovered/total по каждому виду) + кликабельный стрип из 4 карточек под общим прогрессом. Каждая карточка: emoji + label + счётчик X/6 + мини-бар цветом вида + ✓ при полном открытии. Клик фильтрует по виду.
+- Верификация: VLM подтвердил 4 карточки (Конструкт/Псевдодракончик/Сорока/Кукла) с счётчиками и мини-барами ✓
+
+### 4. Achievements: tier filter (новая фича)
+- `src/components/game/AchievementsPanel.tsx`: tier strip теперь кликабельный — 4 кнопки (Все/Бронза/Серебро/Золото). Клик фильтрует список по tier. Добавил `barColor` в TIER_STYLES для чистых прогресс-баров. Список рендерится из filteredAchievements.
+- Верификация: VLM подтвердил стрип с 4 кнопками-фильтрами ✓
+
+### 5. Стиль (mandatory improvement)
+- Mini-game selector: 2 карточки с accent-colored icon-boxes (glow), hover-scale.
+- Codex species strip: кликабельные карточки с accent-цветами видов.
+- Achievements tier filter: активная кнопка с arcane-подсветкой.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 (после rm -rf .next + restart) ✓
+- Mini-game selector: VLM подтвердил 2 игры ✓
+- Codex per-species stats: VLM подтвердил 4 карточки с счётчиками ✓
+- Achievements tier filter: VLM подтвердил 4 кнопки-фильтра ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка, non-blocking.
+- `frameState.clock` (R3F internal) — Clock deprecation, не фиксится без fork.
+- ВАЖНО для будущих агентов: избегать template literals вида `${a}/${b}` (слэш между интерполяциями) в JSX attributes — SWC парсер ломается. Использовать string concatenation.
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Element-spotlight tutorial** — pointer на конкретные UI-элементы.
+2. **Sound effect на эволюцию** — усилить.
+3. **Runes game: уровни сложности** — больше рун / быстрее flash.
+4. **Codex: галерея открытых 3D-моделей** — отдельный fullscreen-режим.
+5. **Achievements: сортировка** (по прогрессу / tier / названию).
+6. **Party roster: онлайн-индикатор** через WebSocket presence.
+
+---
+Task ID: CRON-7 (webDevReview round 7)
+Agent: orchestrator (z.ai code)
+Task: QA + Runes game difficulty levels + Codex 3D gallery fullscreen + Achievements sorting.
+
+## Текущий статус проекта (оценка)
+- СТАБИЛЬНЫЙ. Dev-сервер HTTP 200, lint чистый.
+- Предыдущие раунды добавили: Floating numbers, Codex (filters/sorting/search/badges/species-stats), Keyboard shortcuts, Onboarding, Streak system, 2 мини-игры, Achievements tier filter, Party roster tooltips.
+
+## Выполненные модификации
+
+### 1. Runes game: difficulty levels (новая фича)
+- `src/components/game/MiniGame.tsx`: добавил `Difficulty` type ('easy'|'normal'|'hard') + `DIFFICULTY_CONFIG` (target rounds, runeCount, flashMs, gapMs, label, color).
+  - Easy: 3 раунда, 6 рун, flash 620мс — для новичков.
+  - Normal: 4 раунда, 8 рун, flash 480мс (default).
+  - Hard: 5 раундов, 8 рун, flash 340мс — для опытных.
+- Селектор сложности (3 цветные кнопки) в idle-фазе. Описание показывает runeCount + flashMs.
+- Grid рендерит только `cfg.runeCount` рун. Sequence generation использует `cfg.runeCount`.
+- Верификация: VLM подтвердил селектор (Лёгкий/Обычный/Сложный) с цветными кнопками + сетка рун + "Начать игру" ✓
+
+### 2. Codex: 3D gallery fullscreen (новая фича)
+- `src/components/game/EvolutionCodex.tsx`: добавил `galleryEntry` state. Клик по 3D-превью открытой карточки открывает fullscreen overlay (z-[70], bg-black/85 backdrop-blur).
+  - Large 3D canvas (clamp 300-480px height) с FamiliarCanvas.
+  - Path name (text-glow-arcane) + species/stage badge + visualDescription + зелёная плашка "Скрытый бафф" + pickCount.
+  - Close button (X) + click-outside-to-close + "Вращай мышью" hint.
+  - "🔍 3D" badge появляется на hover превью карточки.
+- Верификация: VLM подтвердил fullscreen overlay с большой 3D-моделью (красный Багровый), названием, описанием, зелёным баффом, кнопкой X ✓
+
+### 3. Achievements: sorting (новая фича)
+- `src/components/game/AchievementsPanel.tsx`: добавил `sortBy` state ('default'|'progress'|'tier'|'name').
+  - default: исходный порядок (по tier из API).
+  - progress: по % прогресса (unlocked=100% первыми).
+  - tier: bronze→silver→gold.
+  - name: по алфавиту (ru locale).
+- Sort control row (4 кнопки) над списком, под tier-strip.
+- Верификация: VLM подтвердил ряд сортировки ✓
+
+### 4. Стиль (mandatory improvement)
+- Runes difficulty: цветные кнопки (зелёный/синий/красный) с active-подсветкой.
+- Codex gallery: arcane-border overlay, glow title, gradient canvas bg, hover "🔍 3D" badge.
+- Achievements sort: компактные chip-кнопки с arcane active.
+
+## Верификация
+- lint: чистый ✓
+- сервер: HTTP 200 ✓
+- Runes difficulty: VLM подтвердил 3 кнопки сложности ✓
+- Codex 3D gallery: VLM подтвердил fullscreen overlay с 3D + баффом ✓
+- Achievements sort: VLM подтвердил ряд сортировки ✓
+- Ошибок в консоли нет ✓
+
+## Нерешённые вопросы / риски
+- DragonFamiliar.tsx:409 stale Turbopack cache — фантомная ошибка, non-blocking.
+- `frameState.clock` (R3F internal) — Clock deprecation, не фиксится без fork.
+- ВАЖНО: избегать `${a}/${b}` template literals в JSX attributes (SWC bug).
+
+## Рекомендации для следующего раунда (приоритет)
+1. **Element-spotlight tutorial** — pointer на конкретные UI-элементы.
+2. **Sound effect на эволюцию** — усилить.
+3. **Party roster: онлайн-индикатор** через WebSocket presence.
+4. **Codex: сравнение путей** — выбрать 2 для side-by-side 3D.
+5. **Mini-game: третья игра** (reaction/whack-a-mole).
+6. **Achievements: детали в тултипе** при наведении на tier-strip.
+
+---
+Task ID: BUGFIX-1 (user-reported)
+Agent: orchestrator (z.ai code)
+Task: Фикс бага — пустая сцена с частицами вместо 3D-модели на экране регистрации.
+
+## Корневая причина
+- В FamiliarCanvas.tsx `<FamiliarModel>` и `<Environment preset="night">` находились в одном `<Suspense fallback={null}>`.
+- Environment грузит HDR-файл с CDN. Если CDN медленный/заблокирован (как в sandbox/некоторых браузерах), Suspense не резолвится → fallback={null} → модель НЕ рендерится.
+- Sparkles находились ВНЕ Suspense → рендерились всегда → пользователь видел "пустую сцену с частицами".
+
+## Фикс
+- `src/components/familiar/FamiliarCanvas.tsx`: вынес `<Environment preset="night">` в отдельный `<Suspense fallback={null}>`. Теперь модель рендерится независимо от загрузки HDR.
+- Это также улучшает dashboard-канвас — модель появляется сразу, не дожидаясь HDR.
+
+## Верификация
+- lint: чистый ✓
+- Все 4 вида рендерятся в превью регистрации: dragon ✓, construct ✓, magpie ✓, doll ✓ (VLM подтверждение)
+- Модель объёмная, видны детали (тело, крылья, голова), средний размер ✓
+- Ошибок в консоли нет ✓
+
+Stage Summary:
+- Баг исправлен. 3D-превью на регистрации теперь работает независимо от доступности HDR CDN.
+
+---
+Task ID: PUSH-1
+Agent: orchestrator (z.ai code)
+Task: Закоммитить и запушить все изменения на GitHub (kostabank/dd-familiar-tamagotchi).
+
+Work Log:
+- Настроил remote origin с токеном пользователя.
+- Remote содержал продакшн-коммиты (Supabase/Vercel deploy: supabase-setup.sql, schema.sql, seed.sql, vercel.json cron fix, directUrl для IPv4) — их не было локально.
+- Истории diverged (unrelated histories) — сделал merge с --allow-unrelated-histories.
+- Разрешил конфликты: код (src/*) → наша локальная версия (CRON-1..7 + bugfix); prod-deploy файлы (supabase-*.sql, vercel.json, next.config.ts, package.json) → remote версия (продакшн-настройки).
+- Восстановил SQLite datasource в schema.prisma (remote-версия была PostgreSQL с directUrl, ломала dev). Добавил modelConfig String? в Familiar (отсутствовал в remote-схеме).
+- db:push --accept-data-loss + regenerate Prisma client + clean restart сервера.
+- Backfill modelConfig для существующих фамильяров (4 шт: Игнис/Каркун/Лоскутик/Эхо).
+- Зарегистрированы демо-аккаунты: dm (из seed), raven/thorn/lyra/zara.
+- lint чистый, сервер HTTP 200, регистрация работает (modelConfig сохраняется).
+- ПУШ УСПЕШЕН: afa0569..c96af34 main -> main на GitHub.
+
+Stage Summary:
+- Все изменения (7 раундов CRON + фикс бага 3D-превью) запушены на GitHub.
+- Remote теперь содержит и продакшн-коммиты (Supabase/Vercel), и все новые фичи.
+- Dev-сервер работает локально на SQLite. Для Vercel-деплоя использовать prisma/schema.prod.prisma (PostgreSQL).

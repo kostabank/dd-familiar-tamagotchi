@@ -37,6 +37,9 @@ export function verifyToken(token: string): TokenPayload | null {
 
 export async function setAuthCookie(token: string): Promise<void> {
   const store = await cookies();
+  // On Vercel (production), the request is HTTPS-terminated at the proxy,
+  // so `secure: true` is correct and required. `sameSite: 'lax'` keeps the
+  // cookie working for same-site navigations + fetch credentials: 'same-origin'.
   store.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
